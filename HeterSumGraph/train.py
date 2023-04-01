@@ -114,7 +114,7 @@ def run_training(model, train_loader, valid_loader, valset, hps, train_dir):
             outputs = model.forward(G)  # [n_snodes, 2]
             snode_id = G.filter_nodes(lambda nodes: nodes.data["dtype"] == 1)
             label = G.ndata["label"][snode_id].sum(-1)  # [n_nodes]
-            G.nodes[snode_id].data["loss"] = criterion(outputs, label).unsqueeze(-1).to(hps.device)  # [n_nodes, 1]
+            G.nodes[snode_id].data["loss"] = criterion(outputs, label.to(hps.device)).unsqueeze(-1)  # [n_nodes, 1]
             loss = dgl.sum_nodes(G, "loss")  # [batch_size, 1]
             loss = loss.mean()
 
