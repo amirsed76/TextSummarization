@@ -45,7 +45,7 @@ class HSumGraph(nn.Module):
 
         self._hps = hps
         self._n_iter = hps.n_iter
-        self._embed = embed
+        self._embed = embed.to(self._hps.device)
         self.embed_size = hps.word_emb_dim
 
         # sent node feature
@@ -79,6 +79,7 @@ class HSumGraph(nn.Module):
         # node classification
         self.n_feature = hps.hidden_size
         self.wh = nn.Linear(self.n_feature, 2)
+
         self.to(hps.device)
 
     def forward(self, graph):
@@ -93,6 +94,7 @@ class HSumGraph(nn.Module):
         """
 
         # word node init
+        graph = graph.to(self._hps.device)
         word_feature = self.set_wnfeature(graph)  # [wnode, embed_size]
 
         sent_feature = self.n_feature_proj(self.set_snfeature(graph))  # [snode, n_feature_size]
@@ -144,14 +146,11 @@ class HSumGraph(nn.Module):
         return lstm_feature
 
     def set_wnfeature(self, graph):
-        graph = graph.to(self._hps.device)
         wnode_id = graph.filter_nodes(lambda nodes: nodes.data["unit"] == 0)
         wsedge_id = graph.filter_edges(lambda edges: edges.data["dtype"] == 0)  # for word to supernode(sent&doc)
         wid = graph.nodes[wnode_id].data["id"]  # [n_wnodes]
-        wid = wid.to(self._hps.device)
-
         w_embed = self._embed(wid)  # [n_wnodes, D]
-        graph.nodes[wnode_id].data["embed"] = w_embed.to(self._hps.device)
+        graph.nodes[wnode_id].data["embed"] = w_embed
         etf = graph.edges[wsedge_id].data["tffrac"]
         graph.edges[wsedge_id].data["tfidfembed"] = self._TFembed(etf)
         return w_embed
