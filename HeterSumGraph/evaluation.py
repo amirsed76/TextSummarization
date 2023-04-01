@@ -60,12 +60,11 @@ def load_test_model(model, model_name, eval_dir, save_root):
     return model
 
 
-
 def run_test(model, dataset, loader, model_name, hps):
-    test_dir = os.path.join(hps.save_root, "test") # make a subdir of the root dir for eval data
+    test_dir = os.path.join(hps.save_root, "test")  # make a subdir of the root dir for eval data
     eval_dir = os.path.join(hps.save_root, "eval")
-    if not os.path.exists(test_dir) : os.makedirs(test_dir)
-    if not os.path.exists(eval_dir) :
+    if not os.path.exists(test_dir): os.makedirs(test_dir)
+    if not os.path.exists(eval_dir):
         logger.exception("[Error] eval_dir %s doesn't exist. Run in train mode to create it.", eval_dir)
         raise Exception("[Error] eval_dir %s doesn't exist. Run in train mode to create it." % (eval_dir))
 
@@ -78,7 +77,7 @@ def run_test(model, dataset, loader, model_name, hps):
     model = load_test_model(model, model_name, eval_dir, hps.save_root)
     model.eval()
 
-    iter_start_time=time.time()
+    iter_start_time = time.time()
     with torch.no_grad():
         logger.info("[Model] Sequence Labeling!")
         tester = SLTester(model, hps.m, limited=hps.limited, test_dir=test_dir)
@@ -111,15 +110,18 @@ def run_test(model, dataset, loader, model_name, hps):
         rouge = Rouge()
         scores_all = rouge.get_scores(tester.hyps, tester.refer, avg=True)
 
-    res = "Rouge1:\n\tp:%.6f, r:%.6f, f:%.6f\n" % (scores_all['rouge-1']['p'], scores_all['rouge-1']['r'], scores_all['rouge-1']['f']) \
-            + "Rouge2:\n\tp:%.6f, r:%.6f, f:%.6f\n" % (scores_all['rouge-2']['p'], scores_all['rouge-2']['r'], scores_all['rouge-2']['f']) \
-                + "Rougel:\n\tp:%.6f, r:%.6f, f:%.6f\n" % (scores_all['rouge-l']['p'], scores_all['rouge-l']['r'], scores_all['rouge-l']['f'])
+    res = "Rouge1:\n\tp:%.6f, r:%.6f, f:%.6f\n" % (
+    scores_all['rouge-1']['p'], scores_all['rouge-1']['r'], scores_all['rouge-1']['f']) \
+          + "Rouge2:\n\tp:%.6f, r:%.6f, f:%.6f\n" % (
+          scores_all['rouge-2']['p'], scores_all['rouge-2']['r'], scores_all['rouge-2']['f']) \
+          + "Rougel:\n\tp:%.6f, r:%.6f, f:%.6f\n" % (
+          scores_all['rouge-l']['p'], scores_all['rouge-l']['r'], scores_all['rouge-l']['f'])
     logger.info(res)
 
     tester.getMetric()
     tester.SaveDecodeFile()
-    logger.info('[INFO] End of test | time: {:5.2f}s | test loss {:5.4f} | '.format((time.time() - iter_start_time),float(running_avg_loss)))
-
+    logger.info('[INFO] End of test | time: {:5.2f}s | test loss {:5.4f} | '.format((time.time() - iter_start_time),
+                                                                                    float(running_avg_loss)))
 
 
 def main():
@@ -136,7 +138,8 @@ def main():
 
     # Important settings
     parser.add_argument('--model', type=str, default="HSG", help="model structure[HSG|HDSG]")
-    parser.add_argument('--test_model', type=str, default='evalbestmodel', help='choose different model to test [multi/evalbestmodel/trainbestmodel/earlystop]')
+    parser.add_argument('--test_model', type=str, default='evalbestmodel',
+                        help='choose different model to test [multi/evalbestmodel/trainbestmodel/earlystop]')
     parser.add_argument('--use_pyrouge', action='store_true', default=False, help='use_pyrouge')
 
     # Where to save output
@@ -152,7 +155,8 @@ def main():
 
     parser.add_argument('--word_embedding', action='store_true', default=True, help='whether to use Word embedding')
     parser.add_argument('--word_emb_dim', type=int, default=300, help='Word embedding size [default: 300]')
-    parser.add_argument('--embed_train', action='store_true', default=False, help='whether to train Word embedding [default: False]')
+    parser.add_argument('--embed_train', action='store_true', default=False,
+                        help='whether to train Word embedding [default: False]')
     parser.add_argument('--feat_embed_size', type=int, default=50, help='feature embedding size [default: 50]')
     parser.add_argument('--n_layers', type=int, default=1, help='Number of GAT layers [default: 1]')
     parser.add_argument('--lstm_hidden_state', type=int, default=128, help='size of lstm hidden state')
@@ -161,20 +165,25 @@ def main():
     parser.add_argument('--n_feature_size', type=int, default=128, help='size of node feature')
     parser.add_argument('--hidden_size', type=int, default=64, help='hidden size [default: 64]')
     parser.add_argument('--gcn_hidden_size', type=int, default=128, help='hidden size [default: 64]')
-    parser.add_argument('--ffn_inner_hidden_size', type=int, default=512, help='PositionwiseFeedForward inner hidden size [default: 512]')
+    parser.add_argument('--ffn_inner_hidden_size', type=int, default=512,
+                        help='PositionwiseFeedForward inner hidden size [default: 512]')
     parser.add_argument('--n_head', type=int, default=8, help='multihead attention number [default: 8]')
-    parser.add_argument('--recurrent_dropout_prob', type=float, default=0.1, help='recurrent dropout prob [default: 0.1]')
-    parser.add_argument('--atten_dropout_prob', type=float, default=0.1,help='attention dropout prob [default: 0.1]')
-    parser.add_argument('--ffn_dropout_prob', type=float, default=0.1, help='PositionwiseFeedForward dropout prob [default: 0.1]')
-    parser.add_argument('--use_orthnormal_init', action='store_true', default=True, help='use orthnormal init for lstm [default: true]')
-    parser.add_argument('--sent_max_len', type=int, default=100, help='max length of sentences (max source text sentence tokens)')
-    parser.add_argument('--doc_max_timesteps', type=int, default=50, help='max length of documents (max timesteps of documents)')
-    parser.add_argument('--save_label', action='store_true', default=False, help='require multihead attention')
+    parser.add_argument('--recurrent_dropout_prob', type=float, default=0.1,
+                        help='recurrent dropout prob [default: 0.1]')
+    parser.add_argument('--atten_dropout_prob', type=float, default=0.1, help='attention dropout prob [default: 0.1]')
+    parser.add_argument('--ffn_dropout_prob', type=float, default=0.1,
+                        help='PositionwiseFeedForward dropout prob [default: 0.1]')
+    parser.add_argument('--use_orthnormal_init', action='store_true', default=True,
+                        help='use orthnormal init for lstm [default: true]')
+    parser.add_argument('--sent_max_len', type=int, default=100,
+                        help='max length of sentences (max source text sentence tokens)')
+    parser.add_argument('--doc_max_timesteps', type=int, default=50,
+                        help='max length of documents (max timesteps of documents)')
+    parser.add_argument('--save_label', action='store_true', default=True, help='require multihead attention')
     parser.add_argument('--limited', action='store_true', default=False, help='limited hypo length')
     parser.add_argument('--blocking', action='store_true', default=False, help='ngram blocking')
 
     parser.add_argument('-m', type=int, default=3, help='decode summary length')
-
 
     args = parser.parse_args()
 
@@ -191,7 +200,7 @@ def main():
     if not os.path.exists(LOG_PATH):
         logger.exception("[Error] Logdir %s doesn't exist. Run in train mode to create it.", LOG_PATH)
         raise Exception("[Error] Logdir %s doesn't exist. Run in train mode to create it." % (LOG_PATH))
-    nowTime=datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    nowTime = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     log_path = os.path.join(LOG_PATH, "test_" + nowTime)
     file_handler = logging.FileHandler(log_path)
     file_handler.setFormatter(formatter)
@@ -211,20 +220,21 @@ def main():
     hps = args
     logger.info(hps)
 
-
-
     test_w2s_path = os.path.join(args.cache_dir, "test.w2s.tfidf.jsonl")
     if hps.model == "HSG":
         model = HSumGraph(hps, embed)
         logger.info("[MODEL] HeterSumGraph ")
         dataset = ExampleSet(DATA_FILE, vocab, hps.doc_max_timesteps, hps.sent_max_len, FILTER_WORD, test_w2s_path)
-        loader = torch.utils.data.DataLoader(dataset, batch_size=hps.batch_size, shuffle=True, num_workers=2,collate_fn=graph_collate_fn)
+        loader = torch.utils.data.DataLoader(dataset, batch_size=hps.batch_size, shuffle=True, num_workers=2,
+                                             collate_fn=graph_collate_fn)
     elif hps.model == "HDSG":
         model = HSumDocGraph(hps, embed)
         logger.info("[MODEL] HeterDocSumGraph ")
         test_w2d_path = os.path.join(args.cache_dir, "test.w2d.tfidf.jsonl")
-        dataset = MultiExampleSet(DATA_FILE, vocab, hps.doc_max_timesteps, hps.sent_max_len, FILTER_WORD, test_w2s_path, test_w2d_path)
-        loader = torch.utils.data.DataLoader(dataset, batch_size=hps.batch_size, shuffle=True, num_workers=2,collate_fn=graph_collate_fn)
+        dataset = MultiExampleSet(DATA_FILE, vocab, hps.doc_max_timesteps, hps.sent_max_len, FILTER_WORD, test_w2s_path,
+                                  test_w2d_path)
+        loader = torch.utils.data.DataLoader(dataset, batch_size=hps.batch_size, shuffle=True, num_workers=2,
+                                             collate_fn=graph_collate_fn)
     else:
         logger.error("[ERROR] Invalid Model Type!")
         raise NotImplementedError("Model Type has not been implemented")
@@ -237,7 +247,6 @@ def main():
         hps.device = torch.device("cuda:0")
         logger.info("[INFO] Use CPU")
 
-
     logger.info("[INFO] Decoding...")
     if hps.test_model == "multi":
         for i in range(3):
@@ -245,6 +254,7 @@ def main():
             run_test(model, dataset, loader, model_name, hps)
     else:
         run_test(model, dataset, loader, hps.test_model, hps)
+
 
 if __name__ == '__main__':
     main()
