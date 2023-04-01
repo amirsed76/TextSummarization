@@ -188,7 +188,6 @@ class HSumDocGraph(HSumGraph):
                 sent2doc: type=2
         :return: result: [sentnum, 2]
         """
-
         snode_id = graph.filter_nodes(lambda nodes: nodes.data["dtype"] == 1)
         dnode_id = graph.filter_nodes(lambda nodes: nodes.data["dtype"] == 2)
         supernode_id = graph.filter_nodes(lambda nodes: nodes.data["unit"] == 1)

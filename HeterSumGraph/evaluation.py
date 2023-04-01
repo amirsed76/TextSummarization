@@ -84,7 +84,7 @@ def run_test(model, dataset, loader, model_name, hps):
         tester = SLTester(model, hps.m, limited=hps.limited, test_dir=test_dir)
 
         for i, (G, index) in enumerate(loader):
-            G.to(hps.device)
+            G = G.to(hps.device)
             tester.evaluation(G, index, dataset, blocking=hps.blocking)
 
     running_avg_loss = tester.running_avg_loss
@@ -230,8 +230,13 @@ def main():
         raise NotImplementedError("Model Type has not been implemented")
 
     if args.cuda:
-        model.to(torch.device("cuda:0"))
+        hps.device = torch.device("cuda:0")
         logger.info("[INFO] Use cuda")
+
+    else:
+        hps.device = torch.device("cuda:0")
+        logger.info("[INFO] Use CPU")
+
 
     logger.info("[INFO] Decoding...")
     if hps.test_model == "multi":
