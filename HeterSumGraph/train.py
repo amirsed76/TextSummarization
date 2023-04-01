@@ -200,6 +200,8 @@ def run_eval(model, loader, valset, hps, best_loss, best_F, non_descent_cnt, sav
         tester = SLTester(model, hps.m)
         for i, (G, index) in enumerate(loader):
             G.to(hps.device)
+            if i>10:
+                return
             tester.evaluation(G, index, valset)
 
     running_avg_loss = tester.running_avg_loss

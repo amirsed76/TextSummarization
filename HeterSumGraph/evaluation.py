@@ -84,8 +84,7 @@ def run_test(model, dataset, loader, model_name, hps):
         tester = SLTester(model, hps.m, limited=hps.limited, test_dir=test_dir)
 
         for i, (G, index) in enumerate(loader):
-            if hps.cuda:
-                G.to(torch.device("cuda"))
+            G.to(hps.device)
             tester.evaluation(G, index, dataset, blocking=hps.blocking)
 
     running_avg_loss = tester.running_avg_loss
