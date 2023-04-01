@@ -403,8 +403,12 @@ def main():
         raise NotImplementedError("Model Type has not been implemented")
 
     if args.cuda:
-        model.to(torch.device("cuda:0"))
+        device = torch.device("cuda:0")
         logger.info("[INFO] Use cuda")
+    else:
+        device = torch.device("cpu")
+        logger.info("[INFO] Use CPU")
+    hps.device = device
 
     setup_training(model, train_loader, valid_loader, valid_dataset, hps)
 

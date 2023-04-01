@@ -31,8 +31,10 @@ from module.Encoder import sentEncoder
 from module.GAT import WSWGAT
 from module.PositionEmbedding import get_sinusoid_encoding_table
 
+
 class HSumGraph(nn.Module):
     """ without sent2sent and add residual connection """
+
     def __init__(self, hps, embed):
         """
 
@@ -46,10 +48,9 @@ class HSumGraph(nn.Module):
         self._embed = embed
         self.embed_size = hps.word_emb_dim
 
-
         # sent node feature
         self._init_sn_param()
-        self._TFembed = nn.Embedding(10, hps.feat_embed_size)   # box=10
+        self._TFembed = nn.Embedding(10, hps.feat_embed_size)  # box=10
         self.n_feature_proj = nn.Linear(hps.n_feature_size * 2, hps.hidden_size, bias=False)
 
         # word -> sent
@@ -78,6 +79,7 @@ class HSumGraph(nn.Module):
         # node classification
         self.n_feature = hps.hidden_size
         self.wh = nn.Linear(self.n_feature, 2)
+        self.to(hps.device)
 
     def forward(self, graph):
         """
@@ -91,9 +93,9 @@ class HSumGraph(nn.Module):
         """
 
         # word node init
-        word_feature = self.set_wnfeature(graph)    # [wnode, embed_size]
+        word_feature = self.set_wnfeature(graph)  # [wnode, embed_size]
 
-        sent_feature = self.n_feature_proj(self.set_snfeature(graph))    # [snode, n_feature_size]
+        sent_feature = self.n_feature_proj(self.set_snfeature(graph))  # [snode, n_feature_size]
 
         # the start state
         word_state = word_feature
@@ -142,9 +144,10 @@ class HSumGraph(nn.Module):
         return lstm_feature
 
     def set_wnfeature(self, graph):
-        wnode_id = graph.filter_nodes(lambda nodes: nodes.data["unit"]==0)
-        wsedge_id = graph.filter_edges(lambda edges: edges.data["dtype"] == 0)   # for word to supernode(sent&doc)
+        wnode_id = graph.filter_nodes(lambda nodes: nodes.data["unit"] == 0)
+        wsedge_id = graph.filter_edges(lambda edges: edges.data["dtype"] == 0)  # for word to supernode(sent&doc)
         wid = graph.nodes[wnode_id].data["id"]  # [n_wnodes]
+        wid = wid.to(self._hps.device)
 
         w_embed = self._embed(wid)  # [n_wnodes, D]
         graph.nodes[wnode_id].data["embed"] = w_embed
@@ -160,8 +163,6 @@ class HSumGraph(nn.Module):
         lstm_feature = self._sent_lstm_feature(features, glen)
         node_feature = torch.cat([cnn_feature, lstm_feature], dim=1)  # [n_nodes, n_feature_size * 2]
         return node_feature
-
-
 
 
 class HSumDocGraph(HSumGraph):
@@ -194,8 +195,8 @@ class HSumDocGraph(HSumGraph):
         supernode_id = graph.filter_nodes(lambda nodes: nodes.data["unit"] == 1)
 
         # word node init
-        word_feature = self.set_wnfeature(graph)    # [wnode, embed_size]
-        sent_feature = self.n_feature_proj(self.set_snfeature(graph))    # [snode, n_feature_size]
+        word_feature = self.set_wnfeature(graph)  # [wnode, embed_size]
+        sent_feature = self.n_feature_proj(self.set_snfeature(graph))  # [snode, n_feature_size]
 
         # sent and doc node init
         graph.nodes[snode_id].data["init_feature"] = sent_feature
@@ -228,14 +229,13 @@ class HSumDocGraph(HSumGraph):
         result = self.wh(s_state)
         return result
 
-
     def set_dnfeature(self, graph):
         """ init doc node by mean pooling on the its sent node (connected by the edges with type=1) """
         dnode_id = graph.filter_nodes(lambda nodes: nodes.data["dtype"] == 2)
         node_feature_list = []
         snid2dnid = {}
         for dnode in dnode_id:
-            snodes = [nid for nid in graph.predecessors(dnode) if graph.nodes[nid].data["dtype"]==1]
+            snodes = [nid for nid in graph.predecessors(dnode) if graph.nodes[nid].data["dtype"] == 1]
             doc_feature = graph.nodes[snodes].data["init_feature"].mean(dim=0)
             assert not torch.any(torch.isnan(doc_feature)), "doc_feature_element"
             node_feature_list.append(doc_feature)
