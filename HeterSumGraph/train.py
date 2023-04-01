@@ -108,9 +108,7 @@ def run_training(model, train_loader, valid_loader, valset, hps, train_dir):
             #     break
             model.train()
 
-            if hps.cuda:
-                G.to(torch.device("cuda"))
-
+            G.to(hps.device)
             outputs = model.forward(G)  # [n_snodes, 2]
             snode_id = G.filter_nodes(lambda nodes: nodes.data["dtype"] == 1)
             label = G.ndata["label"][snode_id].sum(-1)  # [n_nodes]

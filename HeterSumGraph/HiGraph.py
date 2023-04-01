@@ -94,7 +94,6 @@ class HSumGraph(nn.Module):
         """
 
         # word node init
-        graph = graph.to(self._hps.device)
         word_feature = self.set_wnfeature(graph)  # [wnode, embed_size]
 
         sent_feature = self.n_feature_proj(self.set_snfeature(graph))  # [snode, n_feature_size]
