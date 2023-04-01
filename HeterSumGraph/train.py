@@ -371,6 +371,13 @@ def main():
     # train_w2s_path = os.path.join(args.cache_dir, "train.w2s.tfidf.jsonl")
     train_w2s_path = os.path.join(args.cache_dir, "val.w2s.tfidf.jsonl")
     val_w2s_path = os.path.join(args.cache_dir, "val.w2s.tfidf.jsonl")
+    if args.cuda:
+        device = torch.device("cuda:0")
+        logger.info("[INFO] Use cuda")
+    else:
+        device = torch.device("cpu")
+        logger.info("[INFO] Use CPU")
+    hps.device = device
 
     if hps.model == "HSG":
         model = HSumGraph(hps, embed)
@@ -401,14 +408,6 @@ def main():
     else:
         logger.error("[ERROR] Invalid Model Type!")
         raise NotImplementedError("Model Type has not been implemented")
-
-    if args.cuda:
-        device = torch.device("cuda:0")
-        logger.info("[INFO] Use cuda")
-    else:
-        device = torch.device("cpu")
-        logger.info("[INFO] Use CPU")
-    hps.device = device
 
     setup_training(model, train_loader, valid_loader, valid_dataset, hps)
 
