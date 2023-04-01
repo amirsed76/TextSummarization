@@ -144,6 +144,7 @@ class HSumGraph(nn.Module):
         return lstm_feature
 
     def set_wnfeature(self, graph):
+        graph.to(self._hps.device)
         wnode_id = graph.filter_nodes(lambda nodes: nodes.data["unit"] == 0)
         wsedge_id = graph.filter_edges(lambda edges: edges.data["dtype"] == 0)  # for word to supernode(sent&doc)
         wid = graph.nodes[wnode_id].data["id"]  # [n_wnodes]
