@@ -1,0 +1,8 @@
+/datasets
+/embeddings
+HeterSumGraph/cache
+HeterSumGraph/log
+HeterSumGraph/models
+HeterSumGraph/save
+venv
+
