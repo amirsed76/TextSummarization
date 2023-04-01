@@ -68,7 +68,10 @@ if __name__ == '__main__':
             else:
                 sents = e["text"]
             text = " ".join(sents)
-            summary = " ".join(e["summary"])
+            try:
+                summary = " ".join(e["summary"])
+            except:
+                pass
             allword.extend(text.split())
             allword.extend(summary.split())
             cnt += 1
