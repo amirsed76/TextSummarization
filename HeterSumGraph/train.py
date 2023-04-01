@@ -104,7 +104,6 @@ def run_training(model, train_loader, valid_loader, valset, hps, train_dir):
         epoch_start_time = time.time()
         for i, (G, index) in enumerate(train_loader):
             iter_start_time = time.time()
-            print(i)
             if i > 10:
                 break
             model.train()
@@ -200,8 +199,7 @@ def run_eval(model, loader, valset, hps, best_loss, best_F, non_descent_cnt, sav
     with torch.no_grad():
         tester = SLTester(model, hps.m)
         for i, (G, index) in enumerate(loader):
-            if hps.cuda:
-                G.to(torch.device("cuda"))
+            G.to(hps.device)
             tester.evaluation(G, index, valset)
 
     running_avg_loss = tester.running_avg_loss
