@@ -150,7 +150,7 @@ class HSumGraph(nn.Module):
         wid = wid.to(self._hps.device)
 
         w_embed = self._embed(wid)  # [n_wnodes, D]
-        graph.nodes[wnode_id].data["embed"] = w_embed
+        graph.nodes[wnode_id].data["embed"] = w_embed.to(self._hps.device)
         etf = graph.edges[wsedge_id].data["tffrac"]
         graph.edges[wsedge_id].data["tfidfembed"] = self._TFembed(etf)
         return w_embed
