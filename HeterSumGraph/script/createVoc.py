@@ -11,6 +11,7 @@ def catDoc(textlist):
         res.extend(tlist)
     return res
 
+
 def PrintInformation(keys, allcnt):
     # Vocab > 10
     cnt = 0
@@ -68,12 +69,14 @@ if __name__ == '__main__':
             else:
                 sents = e["text"]
             text = " ".join(sents)
+
+            allword.extend(text.split())
             try:
                 summary = " ".join(e["summary"])
+
+                allword.extend(summary.split())
             except:
                 pass
-            allword.extend(text.split())
-            allword.extend(summary.split())
             cnt += 1
     print("Training set of dataset has %d example" % cnt)
 
@@ -91,8 +94,8 @@ if __name__ == '__main__':
 
     fout.close()
 
-    allcnt = fdist1.N() # 788,159,121
-    allset = fdist1.B() # 5,153,669
+    allcnt = fdist1.N()  # 788,159,121
+    allset = fdist1.B()  # 5,153,669
     print("All appearance %d, unique word %d" % (allcnt, allset))
 
     PrintInformation(keys, allcnt)
