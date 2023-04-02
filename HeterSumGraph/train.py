@@ -241,7 +241,7 @@ def main():
     torch.set_printoptions(threshold=50000)
 
     # File paths
-    DATA_FILE = os.path.join(args.data_dir, "val.label.jsonl")
+    DATA_FILE = os.path.join(args.data_dir, "train.label.jsonl")
     # DATA_FILE = os.path.join(args.data_dir, "train.label.jsonl")
     VALID_FILE = os.path.join(args.data_dir, "val.label.jsonl")
     VOCAL_FILE = os.path.join(args.cache_dir, "vocab")
@@ -274,7 +274,7 @@ def main():
     # train_w2s_path = os.path.join(args.cache_dir, "train.w2s.tfidf.jsonl")
     train_w2s_path = os.path.join(args.cache_dir, "val.w2s.tfidf.jsonl")
     val_w2s_path = os.path.join(args.cache_dir, "val.w2s.tfidf.jsonl")
-    if args.cuda:
+    if args.cuda and args.gpu and torch.cuda.is_available():
         device = torch.device("cuda:0")
         logger.info("[INFO] Use cuda")
     else:

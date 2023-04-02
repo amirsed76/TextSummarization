@@ -25,7 +25,7 @@ def pars_args():
     # Hyperparameters
     parser.add_argument('--seed', type=int, default=666, help='set the random seed [default: 666]')
     parser.add_argument('--gpu', type=str, default='0', help='GPU ID to use. [default: 0]')
-    parser.add_argument('--cuda', action='store_true', default=True, help='GPU or CPU [default: False]')
+    parser.add_argument('--cuda', action='store_true', default=False, help='GPU or CPU [default: False]')
     parser.add_argument('--vocab_size', type=int, default=50000, help='Size of vocabulary. [default: 50000]')
     parser.add_argument('--n_epochs', type=int, default=20, help='Number of epochs [default: 20]')
     parser.add_argument('--batch_size', type=int, default=32, help='Mini batch size [default: 32]')
