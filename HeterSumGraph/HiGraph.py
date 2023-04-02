@@ -1,25 +1,3 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-
-# __author__="Danqing Wang"
-
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#         http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
-import numpy as np
-
-import torch
 import torch
 import torch.nn as nn
 import torch.nn.utils.rnn as rnn
@@ -158,10 +136,21 @@ class HSumGraph(nn.Module):
         # node feature
         snode_id = graph.filter_nodes(lambda nodes: nodes.data["dtype"] == 1)
         cnn_feature = self._sent_cnn_feature(graph, snode_id)
-        features, glen = get_snode_feat(graph, feat="sent_embedding")
+        features, glen = self.get_snode_feat(graph, feat="sent_embedding")
         lstm_feature = self._sent_lstm_feature(features, glen)
         node_feature = torch.cat([cnn_feature, lstm_feature], dim=1)  # [n_nodes, n_feature_size * 2]
         return node_feature
+
+    @staticmethod
+    def get_snode_feat(G, feat):
+        glist = dgl.unbatch(G)
+        feature = []
+        glen = []
+        for g in glist:
+            snode_id = g.filter_nodes(lambda nodes: nodes.data["dtype"] == 1)
+            feature.append(g.nodes[snode_id].data[feat])
+            glen.append(len(snode_id))
+        return feature, glen
 
 
 class HSumDocGraph(HSumGraph):
@@ -241,14 +230,3 @@ class HSumDocGraph(HSumGraph):
                 snid2dnid[int(s)] = dnode
         node_feature = torch.stack(node_feature_list)
         return node_feature, snid2dnid
-
-
-def get_snode_feat(G, feat):
-    glist = dgl.unbatch(G)
-    feature = []
-    glen = []
-    for g in glist:
-        snode_id = g.filter_nodes(lambda nodes: nodes.data["dtype"] == 1)
-        feature.append(g.nodes[snode_id].data[feat])
-        glen.append(len(snode_id))
-    return feature, glen

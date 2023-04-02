@@ -20,6 +20,7 @@
 import numpy as np
 from tools.logger import *
 
+
 class Word_Embedding(object):
     def __init__(self, path, vocab):
         """

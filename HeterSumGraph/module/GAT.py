@@ -26,15 +26,19 @@ import torch.nn.functional as F
 from module.GATStackLayer import MultiHeadSGATLayer, MultiHeadLayer
 from module.GATLayer import PositionwiseFeedForward, WSGATLayer, SWGATLayer
 
+
 ######################################### SubModule #########################################
 class WSWGAT(nn.Module):
-    def __init__(self, in_dim, out_dim, num_heads, attn_drop_out, ffn_inner_hidden_size, ffn_drop_out, feat_embed_size, layerType):
+    def __init__(self, in_dim, out_dim, num_heads, attn_drop_out, ffn_inner_hidden_size, ffn_drop_out, feat_embed_size,
+                 layerType):
         super().__init__()
         self.layerType = layerType
         if layerType == "W2S":
-            self.layer = MultiHeadLayer(in_dim, int(out_dim / num_heads), num_heads, attn_drop_out, feat_embed_size, layer=WSGATLayer)
+            self.layer = MultiHeadLayer(in_dim, int(out_dim / num_heads), num_heads, attn_drop_out, feat_embed_size,
+                                        layer=WSGATLayer)
         elif layerType == "S2W":
-            self.layer = MultiHeadLayer(in_dim, int(out_dim / num_heads), num_heads, attn_drop_out, feat_embed_size, layer=SWGATLayer)
+            self.layer = MultiHeadLayer(in_dim, int(out_dim / num_heads), num_heads, attn_drop_out, feat_embed_size,
+                                        layer=SWGATLayer)
         elif layerType == "S2S":
             self.layer = MultiHeadSGATLayer(in_dim, int(out_dim / num_heads), num_heads, attn_drop_out)
         else:
@@ -57,4 +61,3 @@ class WSWGAT(nn.Module):
         h = h + origin
         h = self.ffn(h.unsqueeze(0)).squeeze(0)
         return h
-

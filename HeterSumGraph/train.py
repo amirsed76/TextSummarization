@@ -1,35 +1,13 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-
-# __author__="Danqing Wang"
-
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#         http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
-
-import argparse
 import datetime
 import os
 import shutil
 import time
 import random
-
 import numpy as np
 import torch
 from rouge import Rouge
 import dgl
-
+from config import pars_args
 from HiGraph import HSumGraph, HSumDocGraph
 from Tester import SLTester
 from module.dataloader import ExampleSet, MultiExampleSet, graph_collate_fn
@@ -65,7 +43,8 @@ def setup_training(model, train_loader, valid_loader, valset, hps):
         hps.save_root = hps.save_root + "_reload"
     else:
         logger.info("[INFO] Create new model for training...")
-        if os.path.exists(train_dir): shutil.rmtree(train_dir)
+        if os.path.exists(train_dir):
+            shutil.rmtree(train_dir)
         os.makedirs(train_dir)
 
     try:
@@ -76,16 +55,16 @@ def setup_training(model, train_loader, valid_loader, valset, hps):
 
 
 def run_training(model, train_loader, valid_loader, valset, hps, train_dir):
-    '''  Repeatedly runs training iterations, logging loss to screen and log files
-    
+    """  Repeatedly runs training iterations, logging loss to screen and log files
+
         :param model: the model
         :param train_loader: train dataset loader
         :param valid_loader: valid dataset loader
         :param valset: valid dataset which includes text and summary
         :param hps: hps for model
         :param train_dir: where to save checkpoints
-        :return: 
-    '''
+        :return:
+    """
     logger.info("[INFO] Starting run_training")
 
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=hps.lr)
@@ -175,8 +154,9 @@ def run_training(model, train_loader, valid_loader, valset, hps, train_dir):
 
 
 def run_eval(model, loader, valset, hps, best_loss, best_F, non_descent_cnt, saveNo):
-    ''' 
-        Repeatedly runs eval iterations, logging to screen and writing summaries. Saves the model with the best loss seen so far.
+    """
+        Repeatedly runs eval iterations, logging to screen and writing summaries. Saves the model with the best loss
+        seen so far.
         :param model: the model
         :param loader: valid dataset loader
         :param valset: valid dataset which includes text and summary
@@ -185,11 +165,12 @@ def run_eval(model, loader, valset, hps, best_loss, best_F, non_descent_cnt, sav
         :param best_F: best valid F so far
         :param non_descent_cnt: the number of non descent epoch (for early stop)
         :param saveNo: the number of saved models (always keep best saveNo checkpoints)
-        :return: 
-    '''
+        :return:
+    """
     logger.info("[INFO] Starting eval for this model ...")
     eval_dir = os.path.join(hps.save_root, "eval")  # make a subdir of the root dir for eval data
-    if not os.path.exists(eval_dir): os.makedirs(eval_dir)
+    if not os.path.exists(eval_dir):
+        os.makedirs(eval_dir)
 
     model.eval()
 
@@ -202,7 +183,6 @@ def run_eval(model, loader, valset, hps, best_loss, best_F, non_descent_cnt, sav
 
             tester.evaluation(G, index, valset)
 
-
     running_avg_loss = tester.running_avg_loss
 
     if len(tester.hyps) == 0 or len(tester.refer) == 0:
@@ -212,15 +192,7 @@ def run_eval(model, loader, valset, hps, best_loss, best_F, non_descent_cnt, sav
     scores_all = rouge.get_scores(tester.hyps, tester.refer, avg=True)
     logger.info('[INFO] End of valid | time: {:5.2f}s | valid loss {:5.4f} | '.format((time.time() - iter_start_time),
                                                                                       float(running_avg_loss)))
-
-    res = "Rouge1:\n\tp:%.6f, r:%.6f, f:%.6f\n" % (
-        scores_all['rouge-1']['p'], scores_all['rouge-1']['r'], scores_all['rouge-1']['f']) \
-          + "Rouge2:\n\tp:%.6f, r:%.6f, f:%.6f\n" % (
-              scores_all['rouge-2']['p'], scores_all['rouge-2']['r'], scores_all['rouge-2']['f']) \
-          + "Rougel:\n\tp:%.6f, r:%.6f, f:%.6f\n" % (
-              scores_all['rouge-l']['p'], scores_all['rouge-l']['r'], scores_all['rouge-l']['f'])
-    logger.info(res)
-
+    log_score(scores_all=scores_all)
     tester.getMetric()
     F = tester.labelMetric
 
@@ -259,74 +231,7 @@ def run_eval(model, loader, valset, hps, best_loss, best_F, non_descent_cnt, sav
 
 
 def main():
-    parser = argparse.ArgumentParser(description='HeterSumGraph Model')
-
-    # Where to find data
-    parser.add_argument('--data_dir', type=str, default='G:\dars\\arshad\\tez\projects\HSG\datasets\cnndm',
-                        help='The dataset directory.')
-    parser.add_argument('--cache_dir', type=str, default='G:\dars\\arshad\\tez\projects\HSG\HeterSumGraph\cache\CNNDM',
-                        help='The processed dataset directory')
-    parser.add_argument('--embedding_path', type=str,
-                        default='G:\dars\\arshad\\tez\projects\HSG\embeddings\glove.42B.300d.txt',
-                        help='Path expression to external word embedding.')
-
-    # Important settings
-    parser.add_argument('--model', type=str, default='HSG', help='model structure[HSG|HDSG]')
-    parser.add_argument('--restore_model', type=str, default='None',
-                        help='Restore model for further training. [bestmodel/bestFmodel/earlystop/None]')
-
-    # Where to save output
-    parser.add_argument('--save_root', type=str, default='save/', help='Root directory for all model.')
-    parser.add_argument('--log_root', type=str, default='log/', help='Root directory for all logging.')
-
-    # Hyperparameters
-    parser.add_argument('--seed', type=int, default=666, help='set the random seed [default: 666]')
-    parser.add_argument('--gpu', type=str, default='0', help='GPU ID to use. [default: 0]')
-    parser.add_argument('--cuda', action='store_true', default=True, help='GPU or CPU [default: False]')
-    parser.add_argument('--vocab_size', type=int, default=50000, help='Size of vocabulary. [default: 50000]')
-    parser.add_argument('--n_epochs', type=int, default=20, help='Number of epochs [default: 20]')
-    parser.add_argument('--batch_size', type=int, default=32, help='Mini batch size [default: 32]')
-    parser.add_argument('--n_iter', type=int, default=1, help='iteration hop [default: 1]')
-
-    parser.add_argument('--word_embedding', action='store_true', default=False,
-                        help='whether to use Word embedding [default: True]')
-    parser.add_argument('--word_emb_dim', type=int, default=300, help='Word embedding size [default: 300]')
-    parser.add_argument('--embed_train', action='store_true', default=False,
-                        help='whether to train Word embedding [default: False]')
-    parser.add_argument('--feat_embed_size', type=int, default=50, help='feature embedding size [default: 50]')
-    parser.add_argument('--n_layers', type=int, default=1, help='Number of GAT layers [default: 1]')
-    parser.add_argument('--lstm_hidden_state', type=int, default=128, help='size of lstm hidden state [default: 128]')
-    parser.add_argument('--lstm_layers', type=int, default=2, help='Number of lstm layers [default: 2]')
-    parser.add_argument('--bidirectional', action='store_true', default=True,
-                        help='whether to use bidirectional LSTM [default: True]')
-    parser.add_argument('--n_feature_size', type=int, default=128, help='size of node feature [default: 128]')
-    parser.add_argument('--hidden_size', type=int, default=64, help='hidden size [default: 64]')
-    parser.add_argument('--ffn_inner_hidden_size', type=int, default=512,
-                        help='PositionwiseFeedForward inner hidden size [default: 512]')
-    parser.add_argument('--n_head', type=int, default=8, help='multihead attention number [default: 8]')
-    parser.add_argument('--recurrent_dropout_prob', type=float, default=0.1,
-                        help='recurrent dropout prob [default: 0.1]')
-    parser.add_argument('--atten_dropout_prob', type=float, default=0.1, help='attention dropout prob [default: 0.1]')
-    parser.add_argument('--ffn_dropout_prob', type=float, default=0.1,
-                        help='PositionwiseFeedForward dropout prob [default: 0.1]')
-    parser.add_argument('--use_orthnormal_init', action='store_true', default=True,
-                        help='use orthnormal init for lstm [default: True]')
-    parser.add_argument('--sent_max_len', type=int, default=100,
-                        help='max length of sentences (max source text sentence tokens)')
-    parser.add_argument('--doc_max_timesteps', type=int, default=50,
-                        help='max length of documents (max timesteps of documents)')
-
-    # Training
-    parser.add_argument('--lr', type=float, default=0.0005, help='learning rate')
-    parser.add_argument('--lr_descent', action='store_true', default=False, help='learning rate descent')
-    parser.add_argument('--grad_clip', action='store_true', default=False, help='for gradient clipping')
-    parser.add_argument('--max_grad_norm', type=float, default=1.0,
-                        help='for gradient clipping max gradient normalization')
-
-    parser.add_argument('-m', type=int, default=3, help='decode summary length')
-
-    args = parser.parse_args()
-
+    args = pars_args()
     # set the seed
     random.seed(args.seed)
     np.random.seed(args.seed)
