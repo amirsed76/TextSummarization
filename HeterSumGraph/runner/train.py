@@ -51,24 +51,24 @@ class Trainer:
         batch_time_sum = 0
         train_loss = 0.0
         epoch_loss = 0.0
+        iter_start_time = time.time()
 
         for i, (G, index) in enumerate(train_loader):
-            iter_start_time = time.time()
             loss = self.train_batch(G=G)
             train_loss += float(loss.data)
             epoch_loss += float(loss.data)
-            batch_time_sum += time.time() - iter_start_time
             if i % 100 == 99:
                 if _DEBUG_FLAG_:
                     for name, param in self.model.named_parameters():
                         if param.requires_grad:
                             logger.debug(name)
                             logger.debug(param.grad.data.sum())
+                batch_time_sum = time.time() - iter_start_time
+                iter_start_time = time.time()
                 logger.info(
                     '| end of iter {:3d} | time: {:5.2f}s | train loss {:5.4f} | '.format(i, (batch_time_sum / 100),
                                                                                           float(train_loss / 100)))
                 train_loss = 0.0
-                batch_time_sum = 0
 
         epoch_avg_loss = epoch_loss / len(train_loader)
         logger.info('   | end of epoch {:3d} | time: {:5.2f}s | epoch train loss {:5.4f} | '
