@@ -1,3 +1,5 @@
+import time
+
 import torch
 import torch.nn as nn
 import torch.nn.utils.rnn as rnn
@@ -70,6 +72,8 @@ class HSumGraph(nn.Module):
                 word2sent, sent2word:  tffrac=int, type=0
         :return: result: [sentnum, 2]
         """
+        print("forward started")
+        t1 = time.time()
 
         # word node init
         word_feature = self.set_wnfeature(graph)  # [wnode, embed_size]
@@ -87,6 +91,7 @@ class HSumGraph(nn.Module):
             sent_state = self.word2sent(graph, word_state, sent_state)
 
         result = self.wh(sent_state)
+        print("forward_time: ",time.time()-t1)
 
         return result
 

@@ -32,7 +32,7 @@ def setup_training(model, hps, data_variables):
 
 
 class Trainer:
-    def __init__(self, model, hps):
+    def __init__(self, model, hps, train_dir):
         self.model = model
         self.hps = hps
         self.optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=hps.lr)
@@ -44,16 +44,17 @@ class Trainer:
         self.saveNo = 0
         self.epoch = 1
         self.epoch_avg_loss = 0
+        self.train_dir = train_dir
 
     def run_epoch(self, train_loader):
         epoch_start_time = time.time()
 
-        batch_time_sum = 0
         train_loss = 0.0
         epoch_loss = 0.0
         iter_start_time = time.time()
-
+        print("epoch starter")
         for i, (G, index) in enumerate(train_loader):
+            print("batch started")
             loss = self.train_batch(G=G)
             train_loss += float(loss.data)
             epoch_loss += float(loss.data)
@@ -69,10 +70,11 @@ class Trainer:
                     '| end of iter {:3d} | time: {:5.2f}s | train loss {:5.4f} | '.format(i, (batch_time_sum / 100),
                                                                                           float(train_loss / 100)))
                 train_loss = 0.0
+                self.save_model()
 
-        epoch_avg_loss = epoch_loss / len(train_loader)
+        self.epoch_avg_loss = epoch_loss / len(train_loader)
         logger.info('   | end of epoch {:3d} | time: {:5.2f}s | epoch train loss {:5.4f} | '
-                    .format(self.epoch, (time.time() - epoch_start_time), float(epoch_avg_loss)))
+                    .format(self.epoch, (time.time() - epoch_start_time), float(self.epoch_avg_loss)))
         return epoch_loss
 
     def train_batch(self, G):
@@ -107,22 +109,22 @@ class Trainer:
                 param_group['lr'] = new_lr
             logger.info("[INFO] The learning rate now is %f", new_lr)
 
-    def save_model(self, train_dir):
+    def save_model(self):
         if not self.best_train_loss or self.epoch_avg_loss < self.best_train_loss:
-            save_file = os.path.join(train_dir, "bestmodel")
+            save_file = os.path.join(self.hps.train_dir, "bestmodel")
             logger.info('[INFO] Found new best model with %.3f running_train_loss. Saving to %s',
                         float(self.epoch_avg_loss),
                         save_file)
             save_model(self.model, save_file)
-            best_train_loss = self.epoch_avg_loss
-        elif self.epoch_avg_loss >= self.best_train_loss:
-            logger.error("[Error] training loss does not descent. Stopping supervisor...")
-            save_model(self.model, os.path.join(train_dir, "earlystop"))
-            sys.exit(1)
+            self.best_train_loss = self.epoch_avg_loss
+        # elif self.epoch_avg_loss >= self.best_train_loss:
+        #     logger.error("[Error] training loss does not descent. Stopping supervisor...")
+        #     save_model(self.model, os.path.join(self.train_dir, "earlystop"))
+        #     sys.exit(1)
 
 
 def run_training(model, hps, data_variables):
-    trainer = Trainer(model=model, hps=hps)
+    trainer = Trainer(model=model, hps=hps, train_dir=os.path.join(hps.save_root, "train"))
 
     for epoch in range(1, hps.n_epochs + 1):
         train_loader = data_loaders.make_dataloader(data_file=data_variables["train_file"],
