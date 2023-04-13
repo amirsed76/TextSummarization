@@ -9,7 +9,6 @@ from module.embedding import Word_Embedding
 from module.vocabulary import Vocab
 from tools.logger import *
 from runner.train import setup_training
-from data_manager import data_loaders
 
 
 def set_device(hps):
@@ -30,13 +29,11 @@ def initial_seed(hps):
 
 
 def get_files(hps):
-    # train_file = os.path.join(hps.data_dir, "train.label.jsonl")
-    train_file = os.path.join(hps.data_dir, "val.label.jsonl")
+    train_file = os.path.join(hps.data_dir, "train.label.jsonl")
     valid_file = os.path.join(hps.data_dir, "val.label.jsonl")
     vocal_file = os.path.join(hps.cache_dir, "vocab")
     filter_word = os.path.join(hps.cache_dir, "filter_word.txt")
-    train_w2s_path = os.path.join(hps.cache_dir, "val.w2s.tfidf.jsonl")
-    # train_w2s_path = os.path.join(hps.cache_dir, "train.w2s.tfidf.jsonl")
+    train_w2s_path = os.path.join(hps.cache_dir, "train.w2s.tfidf.jsonl")
     val_w2s_path = os.path.join(hps.cache_dir, "val.w2s.tfidf.jsonl")
     log_path = hps.log_root
 
@@ -64,6 +61,8 @@ def main():
     logger.info("[INFO] Create Vocab, vocab path is %s", vocal_file)
     vocab = Vocab(vocal_file, hps.vocab_size)
     embed = torch.nn.Embedding(vocab.size(), hps.word_emb_dim, padding_idx=0)
+
+    # noinspection DuplicatedCode
     if hps.word_embedding:
         embed_loader = Word_Embedding(hps.embedding_path, vocab)
         vectors = embed_loader.load_my_vecs(hps.word_emb_dim)
@@ -76,17 +75,21 @@ def main():
     if hps.model == "HSG":
         model = HSumGraph(hps, embed)
         logger.info("[MODEL] HeterSumGraph ")
-        train_loader = data_loaders.make_dataloader(data_file=train_file, vocab=vocab, hps=hps, filter_word=filter_word,
-                                                    w2s_path=train_w2s_path,max_instance=100)
-        valid_loader = data_loaders.make_dataloader(data_file=valid_file, vocab=vocab, hps=hps, filter_word=filter_word,
-                                                    w2s_path=val_w2s_path,max_instance=100)
+        data_variables = {
+            "train_file": train_file,
+            "valid_file": valid_file,
+            "vocab": vocab,
+            "filter_word": filter_word,
+            "train_w2s_path": train_w2s_path,
+            "val_w2s_path": val_w2s_path
+        }
 
     # CAN use HDSG
     else:
         logger.error("[ERROR] Invalid Model Type!")
         raise NotImplementedError("Model Type has not been implemented")
 
-    setup_training(model, train_loader, valid_loader, valid_loader.dataset, hps)
+    setup_training(model=model, hps=hps, data_variables=data_variables)
 
 
 if __name__ == '__main__':

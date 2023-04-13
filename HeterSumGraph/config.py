@@ -1,19 +1,18 @@
 import argparse
 
-
 _DEBUG_FLAG_ = False
+
 
 def pars_args():
     parser = argparse.ArgumentParser(description='HeterSumGraph Model')
 
     # Where to find data
-    parser.add_argument('--data_dir', type=str, default='C:\\Users\\amirreza\Desktop\\dars\\arshad\\tez\project\HSG\datasets\cnndm',
+    parser.add_argument('--data_dir', type=str,
+                        default='C:\\Users\\amirreza\Desktop\\dars\\arshad\\tez\project\HSG\datasets\cnndm',
                         help='The dataset directory.')
-    parser.add_argument('--cache_dir', type=str, default='C:\\Users\\amirreza\Desktop\\dars\\arshad\\tez\\project\\HSG\\HeterSumGraph\\cache\\CNNDM',
+    parser.add_argument('--cache_dir', type=str,
+                        default='C:\\Users\\amirreza\Desktop\\dars\\arshad\\tez\\project\\HSG\\HeterSumGraph\\cache\\CNNDM',
                         help='The processed dataset directory')
-
-
-
 
     parser.add_argument('--embedding_path', type=str,
                         default='C:\\Users\\amirreza\Desktop\\dars\\arshad\\tez\projects\HSG\embeddings\glove.42B.300d.txt',
@@ -73,6 +72,8 @@ def pars_args():
                         help='for gradient clipping max gradient normalization')
 
     parser.add_argument('-m', type=int, default=3, help='decode summary length')
+    parser.add_argument('--max_instances', type=int, default=None,
+                        help='max length of instances')
 
     args = parser.parse_args()
 
