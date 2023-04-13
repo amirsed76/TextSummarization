@@ -6,27 +6,29 @@ import shutil
 import copy
 import datetime
 import numpy as np
+import torch
 
 from rouge import Rouge
 
 from .logger import *
 
 import sys
+
 sys.setrecursionlimit(10000)
 
 _ROUGE_PATH = "/remote-home/dqwang/ROUGE/RELEASE-1.5.5"
 _PYROUGE_TEMP_FILE = "/remote-home/dqwang/"
 
+REMAP = {"-lrb-": "(", "-rrb-": ")", "-lcb-": "{", "-rcb-": "}",
+         "-lsb-": "[", "-rsb-": "]", "``": '"', "''": '"'}
 
-REMAP = {"-lrb-": "(", "-rrb-": ")", "-lcb-": "{", "-rcb-": "}", 
-        "-lsb-": "[", "-rsb-": "]", "``": '"', "''": '"'} 
 
-
-def clean(x): 
+def clean(x):
     x = x.lower()
-    return re.sub( 
-            r"-lrb-|-rrb-|-lcb-|-rcb-|-lsb-|-rsb-|``|''", 
-            lambda m: REMAP.get(m.group()), x)
+    return re.sub(
+        r"-lrb-|-rrb-|-lcb-|-rcb-|-lsb-|-rsb-|``|''",
+        lambda m: REMAP.get(m.group()), x)
+
 
 def rouge_eval(hyps, refer):
     rouge = Rouge()
@@ -37,10 +39,12 @@ def rouge_eval(hyps, refer):
         mean_score = 0.0
     return mean_score
 
+
 def rouge_all(hyps, refer):
     rouge = Rouge()
     score = rouge.get_scores(hyps, refer)[0]
     return score
+
 
 def eval_label(match_true, pred, true, total, match):
     match_true, pred, true, match = match_true.float(), pred.float(), true.float(), match.float()
@@ -55,15 +59,16 @@ def eval_label(match_true, pred, true, total, match):
     return accu, precision, recall, F
 
 
-def pyrouge_score(hyps, refer, remap = True):
+def pyrouge_score(hyps, refer, remap=True):
     return pyrouge_score_all([hyps], [refer], remap)
-    
-def pyrouge_score_all(hyps_list, refer_list, remap = True):
+
+
+def pyrouge_score_all(hyps_list, refer_list, remap=True):
     from pyrouge import Rouge155
-    nowTime=datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    nowTime = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     PYROUGE_ROOT = os.path.join(_PYROUGE_TEMP_FILE, nowTime)
-    SYSTEM_PATH = os.path.join(PYROUGE_ROOT,'result')
-    MODEL_PATH = os.path.join(PYROUGE_ROOT,'gold')
+    SYSTEM_PATH = os.path.join(PYROUGE_ROOT, 'result')
+    MODEL_PATH = os.path.join(PYROUGE_ROOT, 'gold')
     if os.path.exists(SYSTEM_PATH):
         shutil.rmtree(SYSTEM_PATH)
     os.makedirs(SYSTEM_PATH)
@@ -100,13 +105,19 @@ def pyrouge_score_all(hyps_list, refer_list, remap = True):
 
     scores = {}
     scores['rouge-1'], scores['rouge-2'], scores['rouge-l'] = {}, {}, {}
-    scores['rouge-1']['p'], scores['rouge-1']['r'], scores['rouge-1']['f'] = output_dict['rouge_1_precision'], output_dict['rouge_1_recall'], output_dict['rouge_1_f_score']
-    scores['rouge-2']['p'], scores['rouge-2']['r'], scores['rouge-2']['f'] = output_dict['rouge_2_precision'], output_dict['rouge_2_recall'], output_dict['rouge_2_f_score']
-    scores['rouge-l']['p'], scores['rouge-l']['r'], scores['rouge-l']['f'] = output_dict['rouge_l_precision'], output_dict['rouge_l_recall'], output_dict['rouge_l_f_score']
+    scores['rouge-1']['p'], scores['rouge-1']['r'], scores['rouge-1']['f'] = output_dict['rouge_1_precision'], \
+                                                                             output_dict['rouge_1_recall'], output_dict[
+                                                                                 'rouge_1_f_score']
+    scores['rouge-2']['p'], scores['rouge-2']['r'], scores['rouge-2']['f'] = output_dict['rouge_2_precision'], \
+                                                                             output_dict['rouge_2_recall'], output_dict[
+                                                                                 'rouge_2_f_score']
+    scores['rouge-l']['p'], scores['rouge-l']['r'], scores['rouge-l']['f'] = output_dict['rouge_l_precision'], \
+                                                                             output_dict['rouge_l_recall'], output_dict[
+                                                                                 'rouge_l_f_score']
     return scores
 
 
-def pyrouge_score_all_multi(hyps_list, refer_list, remap = True):
+def pyrouge_score_all_multi(hyps_list, refer_list, remap=True):
     from pyrouge import Rouge155
     nowTime = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     PYROUGE_ROOT = os.path.join(_PYROUGE_TEMP_FILE, nowTime)
@@ -125,7 +136,7 @@ def pyrouge_score_all_multi(hyps_list, refer_list, remap = True):
         # model_file = os.path.join(MODEL_PATH, 'Reference.A.%d.txt' % i)
 
         hyps = clean(hyps_list[i]) if remap else hyps_list[i]
-        
+
         with open(system_file, 'wb') as f:
             f.write(hyps.encode('utf-8'))
 
@@ -150,9 +161,15 @@ def pyrouge_score_all_multi(hyps_list, refer_list, remap = True):
 
     scores = {}
     scores['rouge-1'], scores['rouge-2'], scores['rouge-l'] = {}, {}, {}
-    scores['rouge-1']['p'], scores['rouge-1']['r'], scores['rouge-1']['f'] = output_dict['rouge_1_precision'], output_dict['rouge_1_recall'], output_dict['rouge_1_f_score']
-    scores['rouge-2']['p'], scores['rouge-2']['r'], scores['rouge-2']['f'] = output_dict['rouge_2_precision'], output_dict['rouge_2_recall'], output_dict['rouge_2_f_score']
-    scores['rouge-l']['p'], scores['rouge-l']['r'], scores['rouge-l']['f'] = output_dict['rouge_l_precision'], output_dict['rouge_l_recall'], output_dict['rouge_l_f_score']
+    scores['rouge-1']['p'], scores['rouge-1']['r'], scores['rouge-1']['f'] = output_dict['rouge_1_precision'], \
+                                                                             output_dict['rouge_1_recall'], output_dict[
+                                                                                 'rouge_1_f_score']
+    scores['rouge-2']['p'], scores['rouge-2']['r'], scores['rouge-2']['f'] = output_dict['rouge_2_precision'], \
+                                                                             output_dict['rouge_2_recall'], output_dict[
+                                                                                 'rouge_2_f_score']
+    scores['rouge-l']['p'], scores['rouge-l']['r'], scores['rouge-l']['f'] = output_dict['rouge_l_precision'], \
+                                                                             output_dict['rouge_l_recall'], output_dict[
+                                                                                 'rouge_l_f_score']
     return scores
 
 
@@ -190,3 +207,9 @@ def cal_label(article, abstract):
             break
 
     return selected
+
+
+def save_model(model, save_file):
+    with open(save_file, 'wb') as f:
+        torch.save(model.state_dict(), f)
+    logger.info('[INFO] Saving model to %s', save_file)

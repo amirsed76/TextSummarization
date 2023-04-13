@@ -1,22 +1,3 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-
-# __author__="Danqing Wang"
-
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#         http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
 import argparse
 import datetime
 import os
@@ -24,12 +5,11 @@ import time
 import json
 
 import torch
-import torch.nn as nn
 from rouge import Rouge
 
-from HiGraph import HSumGraph, HSumDocGraph
+from HiGraph import HSumGraph
 from Tester import SLTester
-from module.dataloader import ExampleSet, MultiExampleSet, graph_collate_fn
+from module.dataloader import SummarizationDataSet, graph_collate_fn
 from module.embedding import Word_Embedding
 from module.vocabulary import Vocab
 from tools import utils
@@ -63,10 +43,11 @@ def load_test_model(model, model_name, eval_dir, save_root):
 def run_test(model, dataset, loader, model_name, hps):
     test_dir = os.path.join(hps.save_root, "test")  # make a subdir of the root dir for eval data
     eval_dir = os.path.join(hps.save_root, "eval")
-    if not os.path.exists(test_dir): os.makedirs(test_dir)
+    if not os.path.exists(test_dir):
+        os.makedirs(test_dir)
     if not os.path.exists(eval_dir):
         logger.exception("[Error] eval_dir %s doesn't exist. Run in train mode to create it.", eval_dir)
-        raise Exception("[Error] eval_dir %s doesn't exist. Run in train mode to create it." % (eval_dir))
+        raise Exception(f"[Error] eval_dir {eval_dir} doesn't exist. Run in train mode to create it.")
 
     resfile = None
     if hps.save_label:
@@ -111,11 +92,11 @@ def run_test(model, dataset, loader, model_name, hps):
         scores_all = rouge.get_scores(tester.hyps, tester.refer, avg=True)
 
     res = "Rouge1:\n\tp:%.6f, r:%.6f, f:%.6f\n" % (
-    scores_all['rouge-1']['p'], scores_all['rouge-1']['r'], scores_all['rouge-1']['f']) \
+        scores_all['rouge-1']['p'], scores_all['rouge-1']['r'], scores_all['rouge-1']['f']) \
           + "Rouge2:\n\tp:%.6f, r:%.6f, f:%.6f\n" % (
-          scores_all['rouge-2']['p'], scores_all['rouge-2']['r'], scores_all['rouge-2']['f']) \
+              scores_all['rouge-2']['p'], scores_all['rouge-2']['r'], scores_all['rouge-2']['f']) \
           + "Rougel:\n\tp:%.6f, r:%.6f, f:%.6f\n" % (
-          scores_all['rouge-l']['p'], scores_all['rouge-l']['r'], scores_all['rouge-l']['f'])
+              scores_all['rouge-l']['p'], scores_all['rouge-l']['r'], scores_all['rouge-l']['f'])
     logger.info(res)
 
     tester.getMetric()
@@ -224,17 +205,18 @@ def main():
     if hps.model == "HSG":
         model = HSumGraph(hps, embed)
         logger.info("[MODEL] HeterSumGraph ")
-        dataset = ExampleSet(DATA_FILE, vocab, hps.doc_max_timesteps, hps.sent_max_len, FILTER_WORD, test_w2s_path)
+        dataset = SummarizationDataSet(DATA_FILE, vocab, hps.doc_max_timesteps, hps.sent_max_len, FILTER_WORD,
+                                       test_w2s_path)
         loader = torch.utils.data.DataLoader(dataset, batch_size=hps.batch_size, shuffle=True, num_workers=2,
                                              collate_fn=graph_collate_fn)
-    elif hps.model == "HDSG":
-        model = HSumDocGraph(hps, embed)
-        logger.info("[MODEL] HeterDocSumGraph ")
-        test_w2d_path = os.path.join(args.cache_dir, "test.w2d.tfidf.jsonl")
-        dataset = MultiExampleSet(DATA_FILE, vocab, hps.doc_max_timesteps, hps.sent_max_len, FILTER_WORD, test_w2s_path,
-                                  test_w2d_path)
-        loader = torch.utils.data.DataLoader(dataset, batch_size=hps.batch_size, shuffle=True, num_workers=2,
-                                             collate_fn=graph_collate_fn)
+    # elif hps.model == "HDSG":
+    #     model = HSumDocGraph(hps, embed)
+    #     logger.info("[MODEL] HeterDocSumGraph ")
+    #     test_w2d_path = os.path.join(args.cache_dir, "test.w2d.tfidf.jsonl")
+    #     dataset = MultiSummarizationDataSet(DATA_FILE, vocab, hps.doc_max_timesteps, hps.sent_max_len, FILTER_WORD, test_w2s_path,
+    #                                         test_w2d_path)
+    #     loader = torch.utils.data.DataLoader(dataset, batch_size=hps.batch_size, shuffle=True, num_workers=2,
+    #                                          collate_fn=graph_collate_fn)
     else:
         logger.error("[ERROR] Invalid Model Type!")
         raise NotImplementedError("Model Type has not been implemented")
