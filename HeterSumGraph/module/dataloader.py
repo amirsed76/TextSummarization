@@ -1,5 +1,6 @@
+import multiprocessing
 import os
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 
 from dgl.data.utils import save_graphs
 from nltk.corpus import stopwords
@@ -10,8 +11,8 @@ import numpy as np
 import torch
 import torch.utils.data
 from tools.logger import *
-from dgl.data.utils import load_graphs
 import dgl
+from dgl.data.utils import load_graphs
 
 FILTER_WORD = stopwords.words('english')
 punctuations = [',', '.', ':', ';', '?', '(', ')', '[', ']', '&', '!', '*', '@', '#', '$', '%', '\'\'', '\'', '`', '``',
@@ -108,8 +109,7 @@ class Example2(Example):
 class SummarizationDataSet(torch.utils.data.Dataset):
     """ Constructor: Dataset of example(object) for single document summarization"""
 
-    def __init__(self, data_path, vocab, doc_max_time_steps, sent_max_len, filter_word_path, w2s_path,
-                 graphs_dir, max_instance=None):
+    def __init__(self, data_path, vocab, filter_word_path, w2s_path, hps, graphs_dir=None):
         """ Initializes the ExampleSet with the path of data
         
         :param data_path: string; the path of data
@@ -119,14 +119,15 @@ class SummarizationDataSet(torch.utils.data.Dataset):
         :param filter_word_path: str; file path, the file must contain one word for each line and the tfidf value must go from low to high (the format can refer to script/lowTFIDFWords.py) 
         :param w2s_path: str; file path, each line in the file contain a json format data (which can refer to the format can refer to script/calw2sTFIDF.py)
         """
-
+        self.hps = hps
         self.vocab = vocab
-        self.sent_max_len = sent_max_len
-        self.doc_max_timesteps = doc_max_time_steps
+        self.sent_max_len = hps.sent_max_len
+        self.doc_max_timesteps = hps.doc_max_timesteps
+        self.max_instance = hps.max_instances
 
         logger.info("[INFO] Start reading %s", self.__class__.__name__)
         start = time.time()
-        self.example_list = read_json(data_path, max_instance=max_instance)
+        self.example_list = read_json(data_path, max_instance=self.max_instance)
         logger.info("[INFO] Finish reading %s. Total time is %f, Total size is %d", self.__class__.__name__,
                     time.time() - start, len(self.example_list))
         self.size = len(self.example_list)
@@ -142,13 +143,13 @@ class SummarizationDataSet(torch.utils.data.Dataset):
         self.filter_ids += [self.vocab._word_to_id[word] for word in filter_words]
 
         logger.info("[INFO] Loading word2sent TFIDF file from %s!" % w2s_path)
-        self.w2s_tfidf = read_json(w2s_path, max_instance=max_instance)
+        self.w2s_tfidf = read_json(w2s_path, max_instance=self.max_instance)
         self.graphs_dir = graphs_dir
-        self.use_cache = False
-        self.fill_cache_graphs = False
-        if self.fill_cache_graphs:
+        self.use_cache = self.hps.use_cache_graph
+        self.fill_cache = self.hps.fill_graph_cache
+        if self.fill_cache:
             self.cache_graphs()
-        # self.executor = ThreadPoolExecutor(max_workers=16)
+
 
     def get_example(self, index):
         e = self.example_list[index]
@@ -209,9 +210,9 @@ class SummarizationDataSet(torch.utils.data.Dataset):
         G.ndata["unit"][w_nodes:] = torch.ones(N)
         G.ndata["dtype"][w_nodes:] = torch.ones(N)
         sentid2nid = [i + w_nodes for i in range(N)]
-
         G.set_e_initializer(dgl.init.zero_initializer)
         for i in range(N):
+            edges = []
             c = Counter(input_pad[i])
             sent_nid = sentid2nid[i]
             sent_tfw = w2s_w[str(i)]
@@ -219,21 +220,45 @@ class SummarizationDataSet(torch.utils.data.Dataset):
                 if wid in wid2nid.keys() and self.vocab.id2word(wid) in sent_tfw.keys():
                     tfidf = sent_tfw[self.vocab.id2word(wid)]
                     tfidf_box = np.round(tfidf * 9)  # box = 10
-                    G.add_edges(wid2nid[wid], sent_nid,
-                                data={"tffrac": torch.LongTensor([tfidf_box]), "dtype": torch.Tensor([0])})
-                    G.add_edges(sent_nid, wid2nid[wid],
-                                data={"tffrac": torch.LongTensor([tfidf_box]), "dtype": torch.Tensor([0])})
+                    edges.append(
+                        (wid2nid[wid], sent_nid, {"tffrac": torch.LongTensor([tfidf_box]), "dtype": torch.Tensor([0])}))
+                    edges.append(
+                        (sent_nid, wid2nid[wid], {"tffrac": torch.LongTensor([tfidf_box]), "dtype": torch.Tensor([0])}))
 
-            # The two lines can be commented out if you use the code for your own training, since HSG does not use sent2sent edges. 
-            # However, if you want to use the released checkpoint directly, please leave them here.
-            # Otherwise it may cause some parameter corresponding errors due to the version differences.
-            G.add_edges(sent_nid, sentid2nid, data={"dtype": torch.ones(N)})
-            G.add_edges(sentid2nid, sent_nid, data={"dtype": torch.ones(N)})
+            edges.append((sent_nid, sentid2nid, {"dtype": torch.ones(N)}))
+            edges.append((sentid2nid, sent_nid, {"dtype": torch.ones(N)}))
+
+        # futures = []
+        # with ProcessPoolExecutor(max_workers=1) as executor:
+        #     for i in range(N):
+        #         futures.append(executor.submit(self.get_edges, i, input_pad[i], sentid2nid, w2s_w[str(i)], wid2nid, N))
+        #     for future in futures:
+        #         for edge_attr in future.result():
+        #             G.add_edges(edge_attr[0], edge_attr[1], data=edge_attr[2])
+
         G.nodes[sentid2nid].data["words"] = torch.LongTensor(input_pad)  # [N, seq_len]
         G.nodes[sentid2nid].data["position"] = torch.arange(1, N + 1).view(-1, 1).long()  # [N, 1]
         G.nodes[sentid2nid].data["label"] = torch.LongTensor(label)  # [N, doc_max]
 
         return G
+
+    def get_edges(self, i, input_pad_i, sentid2nid, w2s_w_i, wid2nid, N):
+        edges = []
+        c = Counter(input_pad_i)
+        sent_nid = sentid2nid[i]
+        sent_tfw = w2s_w_i
+        for wid in c.keys():
+            if wid in wid2nid.keys() and self.vocab.id2word(wid) in sent_tfw.keys():
+                tfidf = sent_tfw[self.vocab.id2word(wid)]
+                tfidf_box = np.round(tfidf * 9)  # box = 10
+                edges.append(
+                    (wid2nid[wid], sent_nid, {"tffrac": torch.LongTensor([tfidf_box]), "dtype": torch.Tensor([0])}))
+                edges.append(
+                    (sent_nid, wid2nid[wid], {"tffrac": torch.LongTensor([tfidf_box]), "dtype": torch.Tensor([0])}))
+
+        edges.append((sent_nid, sentid2nid, {"dtype": torch.ones(N)}))
+        edges.append((sentid2nid, sent_nid, {"dtype": torch.ones(N)}))
+        return edges
 
     def get_graph(self, index):
         item = self.get_example(index)
@@ -243,39 +268,88 @@ class SummarizationDataSet(torch.utils.data.Dataset):
         G = self.create_graph(input_pad, label, w2s_w)
         return G
 
-    # def prepare_item(self, index):
-    #     self.prepared_items[index] = self.executor.submit(self.prepare_item, index)
-    #
-    # def start_make_graphs(self):
-    #     for index in range(len(self.example_list)):
-    #         self.prepared_items[index] = self.executor.submit(self.prepare_item, index)
-
     def __getitem__(self, index):
-        """
-        :param index: int; the index of the example
-        :return 
-            G: graph for the example
-            index: int; the index of the example in the dataset
-        """
-        # if index not in self.prepared_items:
-        #     self.prepare_item(index)
-        # G = self.prepared_items.pop(index).result()
+
         G = self.get_graph(index)
 
         return G, index
 
     def __getitems__(self, possibly_batched_index):
         data = []
-        with ThreadPoolExecutor(max_workers=64) as executor:
-            for item in executor.map(self.__getitem__, possibly_batched_index):
+
+        with ProcessPoolExecutor(max_workers=1) as executor:
+            for index, item in enumerate(executor.map(self.__getitem__, possibly_batched_index)):
+                print(index)
                 data.append(item)
+
         return data
 
+    def _make_graphs_and_save(self, index):
+        print(f"make graph for index = {index}")
+        t1 = time.time()
+        graphs = [item[0] for item in
+                  self.__getitems__(list(range(index, min(index + 255, len(self.example_list)))))]
+        path = os.path.join(self.graphs_dir, f"{index + self.hps.from_instances_index}.bin")
+        save_graphs(path, graphs)
+        del graphs
+
+        # save_graphs(filename=path, g_list=graphs)
+        print(f"save graphs {index} to {index + 255} =>  {time.time() - t1}")
+
     def cache_graphs(self):
-        for index in range(0, len(self.example_list), 64):
-            path = os.path.join(self.graphs_dir, f"{index}_{index + 63}.bin")
-            graphs = [self.get_graph(index=i) for i in range(64)]
-            save_graphs(filename=path, g_list=graphs)
+        processes = []
+        for index in range(0, len(self.example_list), 256):
+            p = multiprocessing.Process(target=self._make_graphs_and_save, args=(index,))
+            processes.append(p)
+            p.start()
+        for process in processes:
+            process.join()
+        logger.info("finish save graphs")
+
+    def __len__(self):
+        return self.size
+
+
+class CachedSummarizationDataSet(torch.utils.data.Dataset):
+
+    def __init__(self, hps, graphs_dir=None):
+        self.hps = hps
+        self.sent_max_len = hps.sent_max_len
+        self.doc_max_timesteps = hps.doc_max_timesteps
+        self.max_instance = hps.max_instances
+        self.graphs_dir = graphs_dir
+        self.use_cache = self.hps.fill_graph_cache
+        self.graph_index_from = 0
+        self.graph_index_offset = 256
+        self.size = hps.max_instances if hps.max_instances is not None else 28078
+        self.graphs = []
+        self.load_HSG_graphs()
+
+    def load_HSG_graphs(self):
+        self.graphs, _ = load_graphs(os.path.join(self.graphs_dir, f"{self.graph_index_from}.bin"))
+
+    def get_graph(self, index):
+        if not (self.graph_index_from <= index < self.graph_index_from + self.graph_index_offset):
+            self.graph_index_from = (index // self.graph_index_offset) * self.graph_index_offset
+            self.load_HSG_graphs()
+
+        return self.graphs[index - self.graph_index_from]
+
+    def __getitem__(self, index):
+        G = self.get_graph(index)
+
+        return G, index
+
+    # def __getitems__(self, possibly_batched_index):
+    #     data = []
+    #     print(possibly_batched_index)
+    #     return
+    #
+    #     with ProcessPoolExecutor() as executor:
+    #         for item in executor.map(self.__getitem__, possibly_batched_index):
+    #             data.append(item)
+    #
+    #     return data
 
     def __len__(self):
         return self.size
@@ -443,11 +517,14 @@ def catDoc(textlist):
     return res
 
 
-def read_json(fname, max_instance=None):
+def read_json(fname, max_instance=None, from_instances_index=None):
     data_list = []
     count = 0
+    if from_instances_index is None:
+        from_instances_index = 0
     with open(fname, encoding="utf-8") as f:
-        for data in f:
+        lines = f.readlines()
+        for data in lines[from_instances_index:]:
             if max_instance is not None and count >= max_instance:
                 return data_list
             data_list.append(json.loads(data))

@@ -1,4 +1,3 @@
-import multiprocessing
 import os
 import shutil
 import time
@@ -46,7 +45,7 @@ class Trainer:
         self.epoch = 1
         self.epoch_avg_loss = 0
         self.train_dir = train_dir
-        self.report_epoch = 100
+        self.report_epoch = 50
 
     def run_epoch(self, train_loader):
         epoch_start_time = time.time()
@@ -137,8 +136,7 @@ def run_training(model, hps, data_variables):
                                                 vocab=data_variables["vocab"], hps=hps,
                                                 filter_word=data_variables["filter_word"],
                                                 w2s_path=data_variables["train_w2s_path"],
-                                                max_instance=hps.max_instances,
-                                                graphs_dir=os.path.join(data_variables["graphs_dir"],"train"))
+                                                graphs_dir=os.path.join(data_variables["graphs_dir"], "train"))
 
     for epoch in range(1, hps.n_epochs + 1):
         logger.info(f"train started in epoch={epoch}")
@@ -154,8 +152,7 @@ def run_training(model, hps, data_variables):
                                                     vocab=data_variables["vocab"], hps=hps,
                                                     filter_word=data_variables["filter_word"],
                                                     w2s_path=data_variables["val_w2s_path"],
-                                                    max_instance=hps.max_instances,
-                                                    graphs_dir=os.path.join(data_variables["graphs_dir"],"val"))
+                                                    graphs_dir=os.path.join(data_variables["graphs_dir"], "val"))
 
         best_loss, best_F, non_descent_cnt, saveNo = run_eval(model, valid_loader, valid_loader.dataset, hps,
                                                               trainer.best_loss,

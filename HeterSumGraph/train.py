@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from config import pars_args
 from HiGraph import HSumGraph
+from data_manager import data_loaders
 from module.embedding import Word_Embedding
 from module.vocabulary import Vocab
 from tools.logger import *
@@ -75,8 +76,6 @@ def main():
     logger.info(hps)
 
     if hps.model == "HSG":
-        model = HSumGraph(hps, embed)
-        logger.info("[MODEL] HeterSumGraph ")
         data_variables = {
             "train_file": train_file,
             "valid_file": valid_file,
@@ -86,13 +85,28 @@ def main():
             "val_w2s_path": val_w2s_path,
             "graphs_dir": graphs_dir
         }
+        if hps.fill_graph_cache:
+            # for i in range(10):
+                loader = data_loaders.make_dataloader(data_file=data_variables["train_file"],
+                                                        vocab=data_variables["vocab"], hps=hps,
+                                                        filter_word=data_variables["filter_word"],
+                                                        w2s_path=data_variables["train_w2s_path"],
+                                                        graphs_dir=os.path.join(data_variables["graphs_dir"], "train"))
+                del loader
+                hps.from_instances_index=hps.from_instances_index+hps.max_instances
+        else:
+
+            model = HSumGraph(hps, embed)
+            logger.info("[MODEL] HeterSumGraph ")
+            setup_training(model=model, hps=hps, data_variables=data_variables)
+
+
 
     # CAN use HDSG
     else:
         logger.error("[ERROR] Invalid Model Type!")
         raise NotImplementedError("Model Type has not been implemented")
 
-    setup_training(model=model, hps=hps, data_variables=data_variables)
 
 
 if __name__ == '__main__':

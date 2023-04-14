@@ -205,8 +205,9 @@ def main():
     if hps.model == "HSG":
         model = HSumGraph(hps, embed)
         logger.info("[MODEL] HeterSumGraph ")
-        dataset = SummarizationDataSet(DATA_FILE, vocab, hps.doc_max_timesteps, hps.sent_max_len, FILTER_WORD,
-                                       test_w2s_path)
+        dataset = SummarizationDataSet(data_path=DATA_FILE, vocab=vocab, hps=hps, filter_word_path=FILTER_WORD,
+                                       w2s_path=test_w2s_path, graphs_dir=None)
+
         loader = torch.utils.data.DataLoader(dataset, batch_size=hps.batch_size, shuffle=True, num_workers=2,
                                              collate_fn=graph_collate_fn)
     # elif hps.model == "HDSG":
