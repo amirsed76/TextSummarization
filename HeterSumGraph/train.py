@@ -35,9 +35,10 @@ def get_files(hps):
     filter_word = os.path.join(hps.cache_dir, "filter_word.txt")
     train_w2s_path = os.path.join(hps.cache_dir, "train.w2s.tfidf.jsonl")
     val_w2s_path = os.path.join(hps.cache_dir, "val.w2s.tfidf.jsonl")
+    graphs_path = os.path.join(hps.cache_dir, "graphs")
     log_path = hps.log_root
 
-    return train_file, valid_file, vocal_file, filter_word, train_w2s_path, val_w2s_path, log_path
+    return train_file, valid_file, vocal_file, filter_word, train_w2s_path, val_w2s_path, log_path, graphs_path
 
 
 def main():
@@ -46,7 +47,8 @@ def main():
     hps = set_device(hps=hps)
     os.environ['CUDA_VISIBLE_DEVICES'] = hps.gpu
     torch.set_printoptions(threshold=50000)
-    train_file, valid_file, vocal_file, filter_word, train_w2s_path, val_w2s_path, log_path = get_files(hps=hps)
+    train_file, valid_file, vocal_file, filter_word, train_w2s_path, val_w2s_path, log_path, graphs_dir = get_files(
+        hps=hps)
 
     # train_log setting
     if not os.path.exists(log_path):
@@ -81,7 +83,8 @@ def main():
             "vocab": vocab,
             "filter_word": filter_word,
             "train_w2s_path": train_w2s_path,
-            "val_w2s_path": val_w2s_path
+            "val_w2s_path": val_w2s_path,
+            "graphs_dir": graphs_dir
         }
 
     # CAN use HDSG

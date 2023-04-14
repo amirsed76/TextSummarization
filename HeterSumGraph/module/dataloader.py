@@ -1,8 +1,7 @@
-import concurrent
 import os
 from concurrent.futures import ThreadPoolExecutor
-import multiprocessing
 
+from dgl.data.utils import save_graphs
 from nltk.corpus import stopwords
 import time
 import json
@@ -110,7 +109,7 @@ class SummarizationDataSet(torch.utils.data.Dataset):
     """ Constructor: Dataset of example(object) for single document summarization"""
 
     def __init__(self, data_path, vocab, doc_max_time_steps, sent_max_len, filter_word_path, w2s_path,
-                 max_instance=None):
+                 graphs_dir, max_instance=None):
         """ Initializes the ExampleSet with the path of data
         
         :param data_path: string; the path of data
@@ -144,13 +143,18 @@ class SummarizationDataSet(torch.utils.data.Dataset):
 
         logger.info("[INFO] Loading word2sent TFIDF file from %s!" % w2s_path)
         self.w2s_tfidf = read_json(w2s_path, max_instance=max_instance)
-        self.prepared_items = dict()
+        self.graphs_dir = graphs_dir
+        self.use_cache = False
+        self.fill_cache_graphs = False
+        if self.fill_cache_graphs:
+            self.cache_graphs()
         # self.executor = ThreadPoolExecutor(max_workers=16)
 
     def get_example(self, index):
         e = self.example_list[index]
         e["summary"] = e.setdefault("summary", [])
         example = Example(e["text"], e["summary"], self.vocab, self.sent_max_len, e["label"])
+        del e
         return example
 
     def pad_label_m(self, label_matrix):
@@ -237,7 +241,6 @@ class SummarizationDataSet(torch.utils.data.Dataset):
         label = self.pad_label_m(item.label_matrix)
         w2s_w = self.w2s_tfidf[index]
         G = self.create_graph(input_pad, label, w2s_w)
-        self.prepared_items[index] = G
         return G
 
     # def prepare_item(self, index):
@@ -257,10 +260,22 @@ class SummarizationDataSet(torch.utils.data.Dataset):
         # if index not in self.prepared_items:
         #     self.prepare_item(index)
         # G = self.prepared_items.pop(index).result()
-
         G = self.get_graph(index)
 
         return G, index
+
+    def __getitems__(self, possibly_batched_index):
+        data = []
+        with ThreadPoolExecutor(max_workers=64) as executor:
+            for item in executor.map(self.__getitem__, possibly_batched_index):
+                data.append(item)
+        return data
+
+    def cache_graphs(self):
+        for index in range(0, len(self.example_list), 64):
+            path = os.path.join(self.graphs_dir, f"{index}_{index + 63}.bin")
+            graphs = [self.get_graph(index=i) for i in range(64)]
+            save_graphs(filename=path, g_list=graphs)
 
     def __len__(self):
         return self.size
@@ -415,7 +430,6 @@ class LoadHiExampleSet(torch.utils.data.Dataset):
     def __getitem__(self, index):
         graph_file = os.path.join(self.data_root, "%d.graph.bin" % index)
         g, label_dict = load_graphs(graph_file)
-        # print(graph_file)
         return g[0], index
 
     def __len__(self):

@@ -56,7 +56,7 @@ class Trainer:
         iters_start_time = time.time()
         iter_start_time = time.time()
         for i, (G, index) in enumerate(train_loader):
-            print("load time:", time.time()-iter_start_time)
+            print("load time:", time.time() - iter_start_time)
             loss = self.train_batch(G=G)
             train_loss += float(loss.data)
             epoch_loss += float(loss.data)
@@ -137,12 +137,12 @@ def run_training(model, hps, data_variables):
                                                 vocab=data_variables["vocab"], hps=hps,
                                                 filter_word=data_variables["filter_word"],
                                                 w2s_path=data_variables["train_w2s_path"],
-                                                max_instance=hps.max_instances,)
+                                                max_instance=hps.max_instances,
+                                                graphs_dir=os.path.join(data_variables["graphs_dir"],"train"))
 
     for epoch in range(1, hps.n_epochs + 1):
         logger.info(f"train started in epoch={epoch}")
         # train_loader.dataset.start_make_graphs()
-
 
         logger.info("train loader read")
 
@@ -154,7 +154,8 @@ def run_training(model, hps, data_variables):
                                                     vocab=data_variables["vocab"], hps=hps,
                                                     filter_word=data_variables["filter_word"],
                                                     w2s_path=data_variables["val_w2s_path"],
-                                                    max_instance=hps.max_instances)
+                                                    max_instance=hps.max_instances,
+                                                    graphs_dir=os.path.join(data_variables["graphs_dir"],"val"))
 
         best_loss, best_F, non_descent_cnt, saveNo = run_eval(model, valid_loader, valid_loader.dataset, hps,
                                                               trainer.best_loss,

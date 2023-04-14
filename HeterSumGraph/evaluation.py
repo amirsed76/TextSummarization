@@ -51,7 +51,7 @@ def run_test(model, dataset, loader, model_name, hps):
 
     resfile = None
     if hps.save_label:
-        log_dir = os.path.join(test_dir, hps.cache_dir.split("/")[-1])
+        log_dir = os.path.join(test_dir, hps.graphs_dir.split("/")[-1])
         resfile = open(log_dir, "w")
         logger.info("[INFO] Write the Evaluation into %s", log_dir)
 
