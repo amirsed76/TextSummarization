@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+import multiprocessing
 import re
 import os
 import shutil
@@ -208,8 +209,12 @@ def cal_label(article, abstract):
 
     return selected
 
+def _save_model(model, save_file):
 
-def save_model(model, save_file):
     with open(save_file, 'wb') as f:
         torch.save(model.state_dict(), f)
     logger.info('[INFO] Saving model to %s', save_file)
+
+
+def save_model(model, save_file):
+    multiprocessing.Process(target=_save_model,args=(model, save_file))

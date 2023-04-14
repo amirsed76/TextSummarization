@@ -1,4 +1,8 @@
+import concurrent
 import os
+from concurrent.futures import ThreadPoolExecutor
+import multiprocessing
+
 from nltk.corpus import stopwords
 import time
 import json
@@ -128,25 +132,20 @@ class SummarizationDataSet(torch.utils.data.Dataset):
                     time.time() - start, len(self.example_list))
         self.size = len(self.example_list)
 
-        logger.info("[INFO] Loading filter word File %s", filter_word_path)
+        logger.info("[INFO] reading filter word File %s", filter_word_path)
         tfidf_w = read_text(filter_word_path)
         self.filter_words = FILTER_WORD
         self.filter_ids = [vocab.word2id(w.lower()) for w in FILTER_WORD]
         self.filter_ids.append(vocab.word2id("[PAD]"))  # keep "[UNK]" but remove "[PAD]"
-        low_tfidf_num = 0
-        pattern = r"^[0-9]+$"
-        for w in tfidf_w:
-            if vocab.word2id(w) != vocab.word2id('[UNK]'):
-                self.filter_words.append(w)
-                self.filter_ids.append(vocab.word2id(w))
-                # if re.search(pattern, w) == None:  # if w is a number, it will not increase the lowtfidf_num
-                # lowtfidf_num += 1
-                low_tfidf_num += 1
-            if low_tfidf_num > 5000:
-                break
+        logger.info("[INFO] Loading filter word File")
+        filter_words = list(set(tfidf_w).intersection(set(vocab._word_to_id.keys())))[:5000]
+        self.filter_words += filter_words
+        self.filter_ids += [self.vocab._word_to_id[word] for word in filter_words]
 
         logger.info("[INFO] Loading word2sent TFIDF file from %s!" % w2s_path)
-        self.w2s_tfidf = read_json(w2s_path)
+        self.w2s_tfidf = read_json(w2s_path, max_instance=max_instance)
+        self.prepared_items = dict()
+        # self.executor = ThreadPoolExecutor(max_workers=16)
 
     def get_example(self, index):
         e = self.example_list[index]
@@ -232,6 +231,22 @@ class SummarizationDataSet(torch.utils.data.Dataset):
 
         return G
 
+    def get_graph(self, index):
+        item = self.get_example(index)
+        input_pad = item.enc_sent_input_pad[:self.doc_max_timesteps]
+        label = self.pad_label_m(item.label_matrix)
+        w2s_w = self.w2s_tfidf[index]
+        G = self.create_graph(input_pad, label, w2s_w)
+        self.prepared_items[index] = G
+        return G
+
+    # def prepare_item(self, index):
+    #     self.prepared_items[index] = self.executor.submit(self.prepare_item, index)
+    #
+    # def start_make_graphs(self):
+    #     for index in range(len(self.example_list)):
+    #         self.prepared_items[index] = self.executor.submit(self.prepare_item, index)
+
     def __getitem__(self, index):
         """
         :param index: int; the index of the example
@@ -239,11 +254,11 @@ class SummarizationDataSet(torch.utils.data.Dataset):
             G: graph for the example
             index: int; the index of the example in the dataset
         """
-        item = self.get_example(index)
-        input_pad = item.enc_sent_input_pad[:self.doc_max_timesteps]
-        label = self.pad_label_m(item.label_matrix)
-        w2s_w = self.w2s_tfidf[index]
-        G = self.create_graph(input_pad, label, w2s_w)
+        # if index not in self.prepared_items:
+        #     self.prepare_item(index)
+        # G = self.prepared_items.pop(index).result()
+
+        G = self.get_graph(index)
 
         return G, index
 
@@ -275,6 +290,7 @@ class MultiSummarizationDataSet(SummarizationDataSet):
         e = self.example_list[index]
         e["summary"] = e.setdefault("summary", [])
         example = Example2(e["text"], e["summary"], self.vocab, self.sent_max_len, e["label"])
+        del e
         return example
 
     def MapSent2Doc(self, article_len, sentNum):
@@ -385,7 +401,7 @@ class MultiSummarizationDataSet(SummarizationDataSet):
         label = self.pad_label_m(item.label_matrix)
 
         G = self.create_graph(article_len, sent_pad, enc_doc_input, label, self.w2s_tfidf[index], self.w2d_tfidf[index])
-
+        del item
         return G, index
 
 
@@ -414,13 +430,16 @@ def catDoc(textlist):
 
 
 def read_json(fname, max_instance=None):
-    data = []
+    data_list = []
+    count = 0
     with open(fname, encoding="utf-8") as f:
-        for i, line in enumerate(f):
-            if max_instance is not None and i >= max_instance:
-                break
-            data.append(json.loads(line))
-    return data
+        for data in f:
+            if max_instance is not None and count >= max_instance:
+                return data_list
+            data_list.append(json.loads(data))
+            count += 1
+
+    return data_list
 
 
 def read_text(file_name):

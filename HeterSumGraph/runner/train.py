@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import shutil
 import time
@@ -45,32 +46,35 @@ class Trainer:
         self.epoch = 1
         self.epoch_avg_loss = 0
         self.train_dir = train_dir
+        self.report_epoch = 100
 
     def run_epoch(self, train_loader):
         epoch_start_time = time.time()
 
         train_loss = 0.0
         epoch_loss = 0.0
+        iters_start_time = time.time()
         iter_start_time = time.time()
-        print("epoch starter")
         for i, (G, index) in enumerate(train_loader):
-            print("batch started")
+            print("load time:", time.time()-iter_start_time)
             loss = self.train_batch(G=G)
             train_loss += float(loss.data)
             epoch_loss += float(loss.data)
-            if i % 100 == 99:
+            if i % self.report_epoch == self.report_epoch - 1:
                 if _DEBUG_FLAG_:
                     for name, param in self.model.named_parameters():
                         if param.requires_grad:
                             logger.debug(name)
                             logger.debug(param.grad.data.sum())
-                batch_time_sum = time.time() - iter_start_time
-                iter_start_time = time.time()
-                logger.info(
-                    '| end of iter {:3d} | time: {:5.2f}s | train loss {:5.4f} | '.format(i, (batch_time_sum / 100),
-                                                                                          float(train_loss / 100)))
+                batch_time_sum = time.time() - iters_start_time
+                iters_start_time = time.time()
+                logger.info('| end of iter {:3d} | time: {:5.2f}s | train loss {:5.4f} | '.format(i, (
+                        batch_time_sum / self.report_epoch), float(train_loss / self.report_epoch)))
                 train_loss = 0.0
-                self.save_model()
+                self.save_current_model()
+            iter_start_time = time.time()
+
+        self.save_epoch_model()
 
         self.epoch_avg_loss = epoch_loss / len(train_loader)
         logger.info('   | end of epoch {:3d} | time: {:5.2f}s | epoch train loss {:5.4f} | '
@@ -109,33 +113,42 @@ class Trainer:
                 param_group['lr'] = new_lr
             logger.info("[INFO] The learning rate now is %f", new_lr)
 
-    def save_model(self):
+    def save_epoch_model(self):
         if not self.best_train_loss or self.epoch_avg_loss < self.best_train_loss:
-            save_file = os.path.join(self.hps.train_dir, "bestmodel")
+            save_file = os.path.join(self.train_dir, "bestmodel")
             logger.info('[INFO] Found new best model with %.3f running_train_loss. Saving to %s',
                         float(self.epoch_avg_loss),
                         save_file)
             save_model(self.model, save_file)
             self.best_train_loss = self.epoch_avg_loss
-        # elif self.epoch_avg_loss >= self.best_train_loss:
-        #     logger.error("[Error] training loss does not descent. Stopping supervisor...")
-        #     save_model(self.model, os.path.join(self.train_dir, "earlystop"))
-        #     sys.exit(1)
+        elif self.epoch_avg_loss >= self.best_train_loss:
+            logger.error("[Error] training loss does not descent. Stopping supervisor...")
+            save_model(self.model, os.path.join(self.train_dir, "earlystop"))
+            sys.exit(1)
+
+    def save_current_model(self):
+        save_file = os.path.join(self.train_dir, "current")
+        save_model(self.model, save_file)
 
 
 def run_training(model, hps, data_variables):
     trainer = Trainer(model=model, hps=hps, train_dir=os.path.join(hps.save_root, "train"))
+    train_loader = data_loaders.make_dataloader(data_file=data_variables["train_file"],
+                                                vocab=data_variables["vocab"], hps=hps,
+                                                filter_word=data_variables["filter_word"],
+                                                w2s_path=data_variables["train_w2s_path"],
+                                                max_instance=hps.max_instances,)
 
     for epoch in range(1, hps.n_epochs + 1):
-        train_loader = data_loaders.make_dataloader(data_file=data_variables["train_file"],
-                                                    vocab=data_variables["vocab"], hps=hps,
-                                                    filter_word=data_variables["filter_word"],
-                                                    w2s_path=data_variables["train_w2s_path"],
-                                                    max_instance=hps.max_instances)
+        logger.info(f"train started in epoch={epoch}")
+        # train_loader.dataset.start_make_graphs()
+
+
+        logger.info("train loader read")
+
         trainer.epoch = epoch
         model.train()
         trainer.run_epoch(train_loader=train_loader)
-        del train_loader
 
         valid_loader = data_loaders.make_dataloader(data_file=data_variables["valid_file"],
                                                     vocab=data_variables["vocab"], hps=hps,

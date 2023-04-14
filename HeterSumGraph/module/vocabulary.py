@@ -19,10 +19,11 @@
 
 from tools.logger import *
 
-PAD_TOKEN = '[PAD]' # This has a vocab id, which is used to pad the encoder input, decoder input and target sequence
-UNKNOWN_TOKEN = '[UNK]' # This has a vocab id, which is used to represent out-of-vocabulary words
-START_DECODING = '[START]' # This has a vocab id, which is used at the start of every decoder input sequence
-STOP_DECODING = '[STOP]' # This has a vocab id, which is used at the end of untruncated target sequences
+PAD_TOKEN = '[PAD]'  # This has a vocab id, which is used to pad the encoder input, decoder input and target sequence
+UNKNOWN_TOKEN = '[UNK]'  # This has a vocab id, which is used to represent out-of-vocabulary words
+START_DECODING = '[START]'  # This has a vocab id, which is used at the start of every decoder input sequence
+STOP_DECODING = '[STOP]'  # This has a vocab id, which is used at the end of untruncated target sequences
+
 
 # Note: none of [PAD], [UNK], [START], [STOP] should appear in the vocab file.
 
@@ -38,16 +39,16 @@ class Vocab(object):
         """
         self._word_to_id = {}
         self._id_to_word = {}
-        self._count = 0 # keeps track of total number of words in the Vocab
+        self._count = 0  # keeps track of total number of words in the Vocab
 
         # [UNK], [PAD], [START] and [STOP] get the ids 0,1,2,3.
-        for w in [PAD_TOKEN, UNKNOWN_TOKEN,  START_DECODING, STOP_DECODING]:
+        for w in [PAD_TOKEN, UNKNOWN_TOKEN, START_DECODING, STOP_DECODING]:
             self._word_to_id[w] = self._count
             self._id_to_word[self._count] = w
             self._count += 1
 
         # Read the vocab file and add words up to max_size
-        with open(vocab_file, 'r', encoding='utf8') as vocab_f: #New : add the utf8 encoding to prevent error
+        with open(vocab_file, 'r', encoding='utf8') as vocab_f:  # New : add the utf8 encoding to prevent error
             cnt = 0
             for line in vocab_f:
                 cnt += 1
@@ -64,9 +65,12 @@ class Vocab(object):
                 self._id_to_word[self._count] = w
                 self._count += 1
                 if max_size != 0 and self._count >= max_size:
-                    logger.info("[INFO] max_size of vocab was specified as %i; we now have %i words. Stopping reading." % (max_size, self._count))
+                    logger.info(
+                        "[INFO] max_size of vocab was specified as %i; we now have %i words. Stopping reading." % (
+                            max_size, self._count))
                     break
-        logger.info("[INFO] Finished constructing vocabulary of %i total words. Last word added: %s", self._count, self._id_to_word[self._count-1])
+        logger.info("[INFO] Finished constructing vocabulary of %i total words. Last word added: %s", self._count,
+                    self._id_to_word[self._count - 1])
 
     def word2id(self, word):
         """Returns the id (integer) of a word (string). Returns [UNK] id if word is OOV."""
@@ -87,3 +91,14 @@ class Vocab(object):
     def word_list(self):
         """Return the word list of the vocabulary"""
         return self._word_to_id.keys()
+
+    def get_subscription_words(self, words):
+        result_words = []
+        result_ids=[]
+        for item, id_ in self._word_to_id.items():
+            if item not in words:
+                result_words.append(item)
+                result_ids.append(id_)
+
+
+        return result_words,result_ids
