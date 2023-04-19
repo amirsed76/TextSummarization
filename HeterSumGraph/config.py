@@ -72,8 +72,8 @@ def pars_args():
                         help='for gradient clipping max gradient normalization')
 
     parser.add_argument('-m', type=int, default=3, help='decode summary length')
-    parser.add_argument('--max_instances', type=int, default=256,help='max length of instances')
-    parser.add_argument('--from_instances_index', type=int, default=21504,help='from_instances_index')
+    parser.add_argument('--max_instances', type=int, default=1024,help='max length of instances')
+    parser.add_argument('--from_instances_index', type=int, default=172544,help='from_instances_index')
 
     parser.add_argument('--use_cache_graph', type=bool, default=False,help='use cache')
     parser.add_argument('--fill_graph_cache', type=bool, default=True,help='use cache')
@@ -81,3 +81,5 @@ def pars_args():
     args = parser.parse_args()
 
     return args
+
+

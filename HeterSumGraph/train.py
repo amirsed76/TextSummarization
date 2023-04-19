@@ -86,14 +86,14 @@ def main():
             "graphs_dir": graphs_dir
         }
         if hps.fill_graph_cache:
-            # for i in range(10):
+            for i in range(100):
                 loader = data_loaders.make_dataloader(data_file=data_variables["train_file"],
                                                         vocab=data_variables["vocab"], hps=hps,
                                                         filter_word=data_variables["filter_word"],
                                                         w2s_path=data_variables["train_w2s_path"],
                                                         graphs_dir=os.path.join(data_variables["graphs_dir"], "train"))
-                del loader
                 hps.from_instances_index=hps.from_instances_index+hps.max_instances
+                print(f">>>>from:",hps.from_instances_index)
         else:
 
             model = HSumGraph(hps, embed)

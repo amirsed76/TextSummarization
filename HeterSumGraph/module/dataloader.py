@@ -279,7 +279,6 @@ class SummarizationDataSet(torch.utils.data.Dataset):
 
         with ProcessPoolExecutor(max_workers=1) as executor:
             for index, item in enumerate(executor.map(self.__getitem__, possibly_batched_index)):
-                print(index)
                 data.append(item)
 
         return data
