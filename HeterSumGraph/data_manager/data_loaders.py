@@ -6,7 +6,7 @@ import torch
 
 def make_dataloader(data_file, vocab, hps, filter_word, w2s_path, graphs_dir=None):
     if hps.use_cache_graph:
-        dataset = CachedSummarizationDataSet(hps=hps,graphs_dir=graphs_dir)
+        dataset = CachedSummarizationDataSet(hps=hps,graphs_dir=graphs_dir,vocab=vocab,data_path=data_file)
     else:
         dataset = SummarizationDataSet(data_path=data_file, vocab=vocab, filter_word_path=filter_word, w2s_path=w2s_path,
                                        hps=hps, graphs_dir=graphs_dir)

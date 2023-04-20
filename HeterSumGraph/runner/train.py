@@ -55,9 +55,8 @@ class Trainer:
         iters_start_time = time.time()
         iter_start_time = time.time()
         for i, (G, index) in enumerate(train_loader):
-            print("load time:", time.time() - iter_start_time)
             loss = self.train_batch(G=G)
-            print(f"loss ={loss}")
+            # print(f"{i}=>{loss}")
             train_loss += float(loss.data)
             epoch_loss += float(loss.data)
             if i % self.report_epoch == self.report_epoch - 1:
@@ -74,7 +73,7 @@ class Trainer:
                 self.save_current_model()
             iter_start_time = time.time()
 
-        self.save_epoch_model()
+        # self.save_epoch_model()
 
         self.epoch_avg_loss = epoch_loss / len(train_loader)
         logger.info('   | end of epoch {:3d} | time: {:5.2f}s | epoch train loss {:5.4f} | '

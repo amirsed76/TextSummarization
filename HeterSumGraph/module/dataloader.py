@@ -156,7 +156,6 @@ class SummarizationDataSet(torch.utils.data.Dataset):
         e = self.example_list[index]
         e["summary"] = e.setdefault("summary", [])
         example = Example(e["text"], e["summary"], self.vocab, self.sent_max_len, e["label"])
-        del e
         return example
 
     def pad_label_m(self, label_matrix):
@@ -308,7 +307,7 @@ class SummarizationDataSet(torch.utils.data.Dataset):
 
 class CachedSummarizationDataSet(torch.utils.data.Dataset):
 
-    def __init__(self, hps, graphs_dir=None):
+    def __init__(self, hps,data_path=None,vocab=None, graphs_dir=None):
         self.hps = hps
         self.sent_max_len = hps.sent_max_len
         self.doc_max_timesteps = hps.doc_max_timesteps
@@ -317,9 +316,30 @@ class CachedSummarizationDataSet(torch.utils.data.Dataset):
         self.use_cache = self.hps.fill_graph_cache
         self.graph_index_from = 0
         self.graph_index_offset = 256
-        self.size = hps.max_instances if hps.max_instances is not None else 28078
+        root, _, files = list(os.walk(self.graphs_dir))[0]
+        indexes = [int(item[:-4]) for item in files]
+        size = max(indexes) + self.graph_index_offset
+        max_instances = hps.max_instances if hps.max_instances else 288000
+        self.size = min([max_instances, size])
         self.graphs = []
         self.load_HSG_graphs()
+        self.example_list = None
+        self.vocab = vocab
+        self.data_path=data_path
+
+    def fill_example_list(self):
+        self.example_list = read_json(self.data_path, max_instance=self.max_instance,
+                                      from_instances_index=self.hps.from_instances_index)
+
+    def get_example(self, index):
+        if self.example_list is None:
+            self.fill_example_list()
+
+
+        e = self.example_list[index]
+        e["summary"] = e.setdefault("summary", [])
+        example = Example(e["text"], e["summary"], self.vocab, self.sent_max_len, e["label"])
+        return example
 
     def load_HSG_graphs(self):
         self.graphs, _ = load_graphs(os.path.join(self.graphs_dir, f"{self.graph_index_from}.bin"))
@@ -329,7 +349,6 @@ class CachedSummarizationDataSet(torch.utils.data.Dataset):
             self.graph_index_from = (index // self.graph_index_offset) * self.graph_index_offset
             self.load_HSG_graphs()
 
-        print(index,"  ",self.graph_index_from)
         return self.graphs[index - self.graph_index_from]
 
     def __getitem__(self, index):
