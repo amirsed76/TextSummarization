@@ -57,6 +57,7 @@ class Trainer:
         for i, (G, index) in enumerate(train_loader):
             print("load time:", time.time() - iter_start_time)
             loss = self.train_batch(G=G)
+            print(f"loss ={loss}")
             train_loss += float(loss.data)
             epoch_loss += float(loss.data)
             if i % self.report_epoch == self.report_epoch - 1:
@@ -140,7 +141,6 @@ def run_training(model, hps, data_variables):
 
     for epoch in range(1, hps.n_epochs + 1):
         logger.info(f"train started in epoch={epoch}")
-        # train_loader.dataset.start_make_graphs()
 
         logger.info("train loader read")
 

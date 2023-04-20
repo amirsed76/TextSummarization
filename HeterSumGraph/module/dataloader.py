@@ -127,7 +127,8 @@ class SummarizationDataSet(torch.utils.data.Dataset):
 
         logger.info("[INFO] Start reading %s", self.__class__.__name__)
         start = time.time()
-        self.example_list = read_json(data_path, max_instance=self.max_instance,from_instances_index=hps.from_instances_index)
+        self.example_list = read_json(data_path, max_instance=self.max_instance,
+                                      from_instances_index=hps.from_instances_index)
         logger.info("[INFO] Finish reading %s. Total time is %f, Total size is %d", self.__class__.__name__,
                     time.time() - start, len(self.example_list))
         self.size = len(self.example_list)
@@ -143,13 +144,13 @@ class SummarizationDataSet(torch.utils.data.Dataset):
         self.filter_ids += [self.vocab._word_to_id[word] for word in filter_words]
 
         logger.info("[INFO] Loading word2sent TFIDF file from %s!" % w2s_path)
-        self.w2s_tfidf = read_json(w2s_path, max_instance=self.max_instance,from_instances_index=hps.from_instances_index)
+        self.w2s_tfidf = read_json(w2s_path, max_instance=self.max_instance,
+                                   from_instances_index=hps.from_instances_index)
         self.graphs_dir = graphs_dir
         self.use_cache = self.hps.use_cache_graph
         self.fill_cache = self.hps.fill_graph_cache
         if self.fill_cache:
             self.cache_graphs()
-
 
     def get_example(self, index):
         e = self.example_list[index]
@@ -212,7 +213,6 @@ class SummarizationDataSet(torch.utils.data.Dataset):
         sentid2nid = [i + w_nodes for i in range(N)]
         G.set_e_initializer(dgl.init.zero_initializer)
         for i in range(N):
-            edges = []
             c = Counter(input_pad[i])
             sent_nid = sentid2nid[i]
             sent_tfw = w2s_w[str(i)]
@@ -220,22 +220,16 @@ class SummarizationDataSet(torch.utils.data.Dataset):
                 if wid in wid2nid.keys() and self.vocab.id2word(wid) in sent_tfw.keys():
                     tfidf = sent_tfw[self.vocab.id2word(wid)]
                     tfidf_box = np.round(tfidf * 9)  # box = 10
-                    edges.append(
-                        (wid2nid[wid], sent_nid, {"tffrac": torch.LongTensor([tfidf_box]), "dtype": torch.Tensor([0])}))
-                    edges.append(
-                        (sent_nid, wid2nid[wid], {"tffrac": torch.LongTensor([tfidf_box]), "dtype": torch.Tensor([0])}))
+                    G.add_edges(wid2nid[wid], sent_nid,
+                                data={"tffrac": torch.LongTensor([tfidf_box]), "dtype": torch.Tensor([0])})
+                    G.add_edges(sent_nid, wid2nid[wid],
+                                data={"tffrac": torch.LongTensor([tfidf_box]), "dtype": torch.Tensor([0])})
 
-            edges.append((sent_nid, sentid2nid, {"dtype": torch.ones(N)}))
-            edges.append((sentid2nid, sent_nid, {"dtype": torch.ones(N)}))
-
-        # futures = []
-        # with ProcessPoolExecutor(max_workers=1) as executor:
-        #     for i in range(N):
-        #         futures.append(executor.submit(self.get_edges, i, input_pad[i], sentid2nid, w2s_w[str(i)], wid2nid, N))
-        #     for future in futures:
-        #         for edge_attr in future.result():
-        #             G.add_edges(edge_attr[0], edge_attr[1], data=edge_attr[2])
-
+            # The two lines can be commented out if you use the code for your own training, since HSG does not use sent2sent edges.
+            # However, if you want to use the released checkpoint directly, please leave them here.
+            # Otherwise it may cause some parameter corresponding errors due to the version differences.
+            G.add_edges(sent_nid, sentid2nid, data={"dtype": torch.ones(N)})
+            G.add_edges(sentid2nid, sent_nid, data={"dtype": torch.ones(N)})
         G.nodes[sentid2nid].data["words"] = torch.LongTensor(input_pad)  # [N, seq_len]
         G.nodes[sentid2nid].data["position"] = torch.arange(1, N + 1).view(-1, 1).long()  # [N, 1]
         G.nodes[sentid2nid].data["label"] = torch.LongTensor(label)  # [N, doc_max]
@@ -287,7 +281,7 @@ class SummarizationDataSet(torch.utils.data.Dataset):
         print(f"make graph for index = {index}")
         t1 = time.time()
         graphs = [item[0] for item in
-                  self.__getitems__(list(range(index, min(index + 255, len(self.example_list)))))]
+                  self.__getitems__(list(range(index, min(index + 256, len(self.example_list)))))]
         path = os.path.join(self.graphs_dir, f"{index + self.hps.from_instances_index}.bin")
         save_graphs(path, graphs)
         del graphs
@@ -335,6 +329,7 @@ class CachedSummarizationDataSet(torch.utils.data.Dataset):
             self.graph_index_from = (index // self.graph_index_offset) * self.graph_index_offset
             self.load_HSG_graphs()
 
+        print(index,"  ",self.graph_index_from)
         return self.graphs[index - self.graph_index_from]
 
     def __getitem__(self, index):

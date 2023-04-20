@@ -8,9 +8,10 @@ for root, _, files in os.walk(
         from_index = int(file[:-4])
         indexes.append(from_index)
         path = os.path.join(root, file)
-        if file=="288512.bin":
-            g, label_dict = load_graphs(path)
-            print(file,"  ", len(g))
+        # if file=="288512.bin":
+        g, label_dict = load_graphs(path)
+        print(g)
+            # print(file,"  ", len(g))
     max_indexes=max(indexes)
     print(max_indexes," ",max_indexes+256)
     for i in range(0,max_indexes,256):

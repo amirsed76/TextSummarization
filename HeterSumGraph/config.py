@@ -5,17 +5,17 @@ _DEBUG_FLAG_ = False
 
 def pars_args():
     parser = argparse.ArgumentParser(description='HeterSumGraph Model')
-
+    root = "C:\\Users\\amirreza\Desktop\\dars\\arshad\\tez\project\HSG"
     # Where to find data
     parser.add_argument('--data_dir', type=str,
-                        default='C:\\Users\\amirreza\Desktop\\dars\\arshad\\tez\project\HSG\datasets\cnndm',
+                        default=f'{root}\datasets\cnndm',
                         help='The dataset directory.')
     parser.add_argument('--cache_dir', type=str,
-                        default='C:\\Users\\amirreza\Desktop\\dars\\arshad\\tez\\project\\HSG\\HeterSumGraph\\cache\\CNNDM',
+                        default=f'{root}\\HeterSumGraph\\cache\\CNNDM',
                         help='The processed dataset directory')
 
     parser.add_argument('--embedding_path', type=str,
-                        default='C:\\Users\\amirreza\Desktop\\dars\\arshad\\tez\projects\HSG\embeddings\glove.42B.300d.txt',
+                        default=f'{root}\embeddings\glove.42B.300d.txt',
                         help='Path expression to external word embedding.')
 
     # Important settings
@@ -30,7 +30,7 @@ def pars_args():
     # Hyperparameters
     parser.add_argument('--seed', type=int, default=666, help='set the random seed [default: 666]')
     parser.add_argument('--gpu', type=str, default='0', help='GPU ID to use. [default: 0]')
-    parser.add_argument('--cuda', action='store_true', default=False, help='GPU or CPU [default: False]')
+    parser.add_argument('--cuda', action='store_true', default=True, help='GPU or CPU [default: False]')
     parser.add_argument('--vocab_size', type=int, default=50000, help='Size of vocabulary. [default: 50000]')
     parser.add_argument('--n_epochs', type=int, default=20, help='Number of epochs [default: 20]')
     parser.add_argument('--batch_size', type=int, default=64, help='Mini batch size [default: 32]')
@@ -73,10 +73,10 @@ def pars_args():
 
     parser.add_argument('-m', type=int, default=3, help='decode summary length')
     parser.add_argument('--max_instances', type=int, default=1024+256,help='max length of instances')
-    parser.add_argument('--from_instances_index', type=int, default=14080,help='from_instances_index')
+    parser.add_argument('--from_instances_index', type=int, default=0,help='from_instances_index')
 
-    parser.add_argument('--use_cache_graph', type=bool, default=False,help='use cache')
-    parser.add_argument('--fill_graph_cache', type=bool, default=True,help='use cache')
+    parser.add_argument('--use_cache_graph', type=bool, default=True,help='use cache')
+    parser.add_argument('--fill_graph_cache', type=bool, default=False,help='use cache')
 
     args = parser.parse_args()
 
