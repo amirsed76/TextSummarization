@@ -86,8 +86,9 @@ def main():
             "graphs_dir": graphs_dir
         }
         if hps.fill_graph_cache:
-            for i in range(100):
-                loader = data_loaders.make_dataloader(data_file=data_variables["train_file"],
+            for i in range(1):
+                with torch.no_grad():
+                    data_loaders.make_dataloader(data_file=data_variables["train_file"],
                                                         vocab=data_variables["vocab"], hps=hps,
                                                         filter_word=data_variables["filter_word"],
                                                         w2s_path=data_variables["train_w2s_path"],

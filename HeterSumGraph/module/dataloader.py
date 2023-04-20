@@ -127,7 +127,7 @@ class SummarizationDataSet(torch.utils.data.Dataset):
 
         logger.info("[INFO] Start reading %s", self.__class__.__name__)
         start = time.time()
-        self.example_list = read_json(data_path, max_instance=self.max_instance)
+        self.example_list = read_json(data_path, max_instance=self.max_instance,from_instances_index=hps.from_instances_index)
         logger.info("[INFO] Finish reading %s. Total time is %f, Total size is %d", self.__class__.__name__,
                     time.time() - start, len(self.example_list))
         self.size = len(self.example_list)
@@ -143,7 +143,7 @@ class SummarizationDataSet(torch.utils.data.Dataset):
         self.filter_ids += [self.vocab._word_to_id[word] for word in filter_words]
 
         logger.info("[INFO] Loading word2sent TFIDF file from %s!" % w2s_path)
-        self.w2s_tfidf = read_json(w2s_path, max_instance=self.max_instance)
+        self.w2s_tfidf = read_json(w2s_path, max_instance=self.max_instance,from_instances_index=hps.from_instances_index)
         self.graphs_dir = graphs_dir
         self.use_cache = self.hps.use_cache_graph
         self.fill_cache = self.hps.fill_graph_cache
@@ -303,6 +303,9 @@ class SummarizationDataSet(torch.utils.data.Dataset):
             p.start()
         for process in processes:
             process.join()
+            process.close()
+            del process
+        del processes
         logger.info("finish save graphs")
 
     def __len__(self):
@@ -521,6 +524,7 @@ def read_json(fname, max_instance=None, from_instances_index=None):
     count = 0
     if from_instances_index is None:
         from_instances_index = 0
+    print(from_instances_index)
     with open(fname, encoding="utf-8") as f:
         lines = f.readlines()
         for data in lines[from_instances_index:]:
