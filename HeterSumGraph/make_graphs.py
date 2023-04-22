@@ -1,5 +1,6 @@
 import os
 import time
-
-for i in range(1280,287000,1280):
-    os.system(f"python train.py --from_instances_index {i}")
+offset = 1280
+for i in range(12800,13000,offset):
+    os.system(f"python evaluation.py --from_instances_index {i} --max_instances {offset}")
+    # os.system(f"python train.py --from_instances_index {i} --max_instances {offset}")

@@ -20,6 +20,13 @@ def pars_args():
 
     # Important settings
     parser.add_argument('--model', type=str, default='HSG', help='model structure[HSG|HDSG]')
+    parser.add_argument('--test_model', type=str, default='eval\\bestFmodel',
+                        help='choose different model to test [multi/evalbestmodel/trainbestmodel/earlystop]')
+
+    parser.add_argument('--use_pyrouge', action='store_true', default=False, help='use_pyrouge')
+
+
+
     parser.add_argument('--restore_model', type=str, default='None',
                         help='Restore model for further training. [bestmodel/bestFmodel/earlystop/None]')
 
@@ -49,6 +56,9 @@ def pars_args():
                         help='whether to use bidirectional LSTM [default: True]')
     parser.add_argument('--n_feature_size', type=int, default=128, help='size of node feature [default: 128]')
     parser.add_argument('--hidden_size', type=int, default=64, help='hidden size [default: 64]')
+    parser.add_argument('--gcn_hidden_size', type=int, default=128, help='hidden size [default: 64]')
+
+
     parser.add_argument('--ffn_inner_hidden_size', type=int, default=512,
                         help='PositionwiseFeedForward inner hidden size [default: 512]')
     parser.add_argument('--n_head', type=int, default=8, help='multihead attention number [default: 8]')
@@ -72,7 +82,13 @@ def pars_args():
                         help='for gradient clipping max gradient normalization')
 
     parser.add_argument('-m', type=int, default=3, help='decode summary length')
-    parser.add_argument('--max_instances', type=int, default=15000,help='max length of instances')
+    parser.add_argument('--save_label', action='store_true', default=True, help='require multihead attention')
+
+    parser.add_argument('--limited', action='store_true', default=False, help='limited hypo length')
+    parser.add_argument('--blocking', action='store_true', default=False, help='ngram blocking')
+
+
+    parser.add_argument('--max_instances', type=int, default=None,help='max length of instances')
     parser.add_argument('--from_instances_index', type=int, default=0,help='from_instances_index')
 
     parser.add_argument('--use_cache_graph', type=bool, default=True,help='use cache')

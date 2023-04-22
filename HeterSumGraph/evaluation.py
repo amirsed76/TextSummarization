@@ -14,10 +14,17 @@ from module.embedding import Word_Embedding
 from module.vocabulary import Vocab
 from tools import utils
 from tools.logger import *
+from config import pars_args
+from utils import set_device
+from data_manager import data_loaders
 
 
 def load_test_model(model, model_name, eval_dir, save_root):
     """ choose which model will be loaded for evaluation """
+    path = os.path.join(save_root,model_name)
+    model.load_state_dict(torch.load(path))
+    return model
+
     if model_name.startswith('eval'):
         bestmodel_load_path = os.path.join(eval_dir, model_name[4:])
     elif model_name.startswith('train'):
@@ -49,11 +56,11 @@ def run_test(model, dataset, loader, model_name, hps):
         logger.exception("[Error] eval_dir %s doesn't exist. Run in train mode to create it.", eval_dir)
         raise Exception(f"[Error] eval_dir {eval_dir} doesn't exist. Run in train mode to create it.")
 
-    resfile = None
-    if hps.save_label:
-        log_dir = os.path.join(test_dir, hps.graphs_dir.split("/")[-1])
-        resfile = open(log_dir, "w")
-        logger.info("[INFO] Write the Evaluation into %s", log_dir)
+    # resfile = None
+    # if hps.save_label:
+    #     log_dir = os.path.join(test_dir, hps.cache_dir.split("/")[-1])
+    #     resfile = open(log_dir, "w")
+    #     logger.info("[INFO] Write the Evaluation into %s", log_dir)
 
     model = load_test_model(model, model_name, eval_dir, hps.save_root)
     model.eval()
@@ -69,12 +76,12 @@ def run_test(model, dataset, loader, model_name, hps):
 
     running_avg_loss = tester.running_avg_loss
 
-    if hps.save_label:
-        # save label and do not calculate rouge
-        json.dump(tester.extractLabel, resfile)
-        tester.SaveDecodeFile()
-        logger.info('   | end of test | time: {:5.2f}s | '.format((time.time() - iter_start_time)))
-        return
+    # if hps.save_label:
+    #     # save label and do not calculate rouge
+    #     json.dump(tester.extractLabel, resfile)
+    #     tester.SaveDecodeFile()
+    #     logger.info('   | end of test | time: {:5.2f}s | '.format((time.time() - iter_start_time)))
+    #     return
 
     logger.info("The number of pairs is %d", tester.rougePairNum)
     if not tester.rougePairNum:
@@ -106,69 +113,13 @@ def run_test(model, dataset, loader, model_name, hps):
 
 
 def main():
+    args = pars_args()
     parser = argparse.ArgumentParser(description='HeterSumGraph Model')
 
-    # Where to find data
-    parser.add_argument('--data_dir', type=str, default='F:\dars\\arshad\\tez\projects\HSG\datasets\cnndm',
-                        help='The dataset directory.')
-    parser.add_argument('--cache_dir', type=str, default='F:\dars\\arshad\\tez\projects\HSG\HeterSumGraph\cache\CNNDM',
-                        help='The processed dataset directory')
-    parser.add_argument('--embedding_path', type=str,
-                        default='F:\dars\\arshad\\tez\projects\HSG\embeddings\glove.42B.300d.txt',
-                        help='Path expression to external word embedding.')
-
-    # Important settings
-    parser.add_argument('--model', type=str, default="HSG", help="model structure[HSG|HDSG]")
-    parser.add_argument('--test_model', type=str, default='evalbestmodel',
-                        help='choose different model to test [multi/evalbestmodel/trainbestmodel/earlystop]')
-    parser.add_argument('--use_pyrouge', action='store_true', default=False, help='use_pyrouge')
-
-    # Where to save output
-    parser.add_argument('--save_root', type=str, default='models/', help='Root directory for all model.')
-    parser.add_argument('--log_root', type=str, default='log/', help='Root directory for all logging.')
-
-    # Hyperparameters
-    parser.add_argument('--gpu', type=str, default='0', help='GPU ID to use')
-    parser.add_argument('--cuda', action='store_true', default=False, help='use cuda')
-    parser.add_argument('--vocab_size', type=int, default=50000, help='Size of vocabulary.')
-    parser.add_argument('--batch_size', type=int, default=1, help='Mini batch size [default: 32]')
-    parser.add_argument('--n_iter', type=int, default=1, help='iteration ')
-
-    parser.add_argument('--word_embedding', action='store_true', default=True, help='whether to use Word embedding')
-    parser.add_argument('--word_emb_dim', type=int, default=300, help='Word embedding size [default: 300]')
-    parser.add_argument('--embed_train', action='store_true', default=False,
-                        help='whether to train Word embedding [default: False]')
-    parser.add_argument('--feat_embed_size', type=int, default=50, help='feature embedding size [default: 50]')
-    parser.add_argument('--n_layers', type=int, default=1, help='Number of GAT layers [default: 1]')
-    parser.add_argument('--lstm_hidden_state', type=int, default=128, help='size of lstm hidden state')
-    parser.add_argument('--lstm_layers', type=int, default=2, help='lstm layers')
-    parser.add_argument('--bidirectional', action='store_true', default=True, help='use bidirectional LSTM')
-    parser.add_argument('--n_feature_size', type=int, default=128, help='size of node feature')
-    parser.add_argument('--hidden_size', type=int, default=64, help='hidden size [default: 64]')
-    parser.add_argument('--gcn_hidden_size', type=int, default=128, help='hidden size [default: 64]')
-    parser.add_argument('--ffn_inner_hidden_size', type=int, default=512,
-                        help='PositionwiseFeedForward inner hidden size [default: 512]')
-    parser.add_argument('--n_head', type=int, default=8, help='multihead attention number [default: 8]')
-    parser.add_argument('--recurrent_dropout_prob', type=float, default=0.1,
-                        help='recurrent dropout prob [default: 0.1]')
-    parser.add_argument('--atten_dropout_prob', type=float, default=0.1, help='attention dropout prob [default: 0.1]')
-    parser.add_argument('--ffn_dropout_prob', type=float, default=0.1,
-                        help='PositionwiseFeedForward dropout prob [default: 0.1]')
-    parser.add_argument('--use_orthnormal_init', action='store_true', default=True,
-                        help='use orthnormal init for lstm [default: true]')
-    parser.add_argument('--sent_max_len', type=int, default=100,
-                        help='max length of sentences (max source text sentence tokens)')
-    parser.add_argument('--doc_max_timesteps', type=int, default=50,
-                        help='max length of documents (max timesteps of documents)')
-    parser.add_argument('--save_label', action='store_true', default=True, help='require multihead attention')
-    parser.add_argument('--limited', action='store_true', default=False, help='limited hypo length')
-    parser.add_argument('--blocking', action='store_true', default=False, help='ngram blocking')
-
-    parser.add_argument('-m', type=int, default=3, help='decode summary length')
-
-    args = parser.parse_args()
-
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    hps = args
+    hps = set_device(hps=hps)
+
     torch.set_printoptions(threshold=50000)
 
     # File paths
@@ -198,18 +149,25 @@ def main():
         embed.weight.data.copy_(torch.Tensor(pretrained_weight))
         embed.weight.requires_grad = args.embed_train
 
-    hps = args
     logger.info(hps)
 
     test_w2s_path = os.path.join(args.cache_dir, "test.w2s.tfidf.jsonl")
     if hps.model == "HSG":
         model = HSumGraph(hps, embed)
         logger.info("[MODEL] HeterSumGraph ")
-        dataset = SummarizationDataSet(data_path=DATA_FILE, vocab=vocab, hps=hps, filter_word_path=FILTER_WORD,
-                                       w2s_path=test_w2s_path, graphs_dir=None)
+        loader = data_loaders.make_dataloader(
+            data_file=DATA_FILE,vocab=vocab,hps=hps,filter_word=FILTER_WORD,w2s_path=test_w2s_path,
+            graphs_dir=os.path.join(args.cache_dir,"graphs\\test")
+        )
+        if hps.fill_graph_cache:
+            return
 
-        loader = torch.utils.data.DataLoader(dataset, batch_size=hps.batch_size, shuffle=True, num_workers=2,
-                                             collate_fn=graph_collate_fn)
+        #
+        # dataset = SummarizationDataSet(data_path=DATA_FILE, vocab=vocab, hps=hps, filter_word_path=FILTER_WORD,
+        #                                w2s_path=test_w2s_path, graphs_dir=None)
+
+        # loader = torch.utils.data.DataLoader(dataset, batch_size=hps.batch_size, shuffle=False, num_workers=2,
+        #                                      collate_fn=graph_collate_fn)
     # elif hps.model == "HDSG":
     #     model = HSumDocGraph(hps, embed)
     #     logger.info("[MODEL] HeterDocSumGraph ")
@@ -234,9 +192,10 @@ def main():
     if hps.test_model == "multi":
         for i in range(3):
             model_name = "evalbestmodel_%d" % i
-            run_test(model, dataset, loader, model_name, hps)
+            run_test(model, loader.dataset, loader, model_name, hps)
     else:
-        run_test(model, dataset, loader, hps.test_model, hps)
+        print(model)
+        run_test(model, loader.dataset, loader, hps.test_model, hps)
 
 
 if __name__ == '__main__':

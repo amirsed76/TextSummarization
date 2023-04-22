@@ -10,17 +10,7 @@ from module.embedding import Word_Embedding
 from module.vocabulary import Vocab
 from tools.logger import *
 from runner.train import setup_training
-
-
-def set_device(hps):
-    if hps.cuda and hps.gpu and torch.cuda.is_available():
-        device = torch.device("cuda:0")
-        logger.info("[INFO] Use cuda")
-    else:
-        device = torch.device("cpu")
-        logger.info("[INFO] Use CPU")
-    hps.device = device
-    return hps
+from utils import set_device
 
 
 def initial_seed(hps):
@@ -89,12 +79,12 @@ def main():
             for i in range(1):
                 with torch.no_grad():
                     data_loaders.make_dataloader(data_file=data_variables["train_file"],
-                                                        vocab=data_variables["vocab"], hps=hps,
-                                                        filter_word=data_variables["filter_word"],
-                                                        w2s_path=data_variables["train_w2s_path"],
-                                                        graphs_dir=os.path.join(data_variables["graphs_dir"], "train"))
-                hps.from_instances_index=hps.from_instances_index+hps.max_instances
-                print(f">>>>from:",hps.from_instances_index)
+                                                 vocab=data_variables["vocab"], hps=hps,
+                                                 filter_word=data_variables["filter_word"],
+                                                 w2s_path=data_variables["train_w2s_path"],
+                                                 graphs_dir=os.path.join(data_variables["graphs_dir"], "train"))
+                hps.from_instances_index = hps.from_instances_index + hps.max_instances
+                print(f">>>>from:", hps.from_instances_index)
         else:
 
             model = HSumGraph(hps, embed)
@@ -107,7 +97,6 @@ def main():
     else:
         logger.error("[ERROR] Invalid Model Type!")
         raise NotImplementedError("Model Type has not been implemented")
-
 
 
 if __name__ == '__main__':

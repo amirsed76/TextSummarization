@@ -81,7 +81,7 @@ class Trainer:
         return epoch_loss
 
     def train_batch(self, G):
-        G = G.to(self.hps.device)
+        G = G.to(self.hps.device)  # TODO i think G is in device
         outputs = self.model.forward(G)  # [n_snodes, 2]
         snode_id = G.filter_nodes(lambda nodes: nodes.data["dtype"] == 1)
         label = G.ndata["label"][snode_id].sum(-1)  # [n_nodes]
@@ -145,21 +145,28 @@ def run_training(model, hps, data_variables):
 
         trainer.epoch = epoch
         model.train()
-        trainer.run_epoch(train_loader=train_loader)
+        try:
+            trainer.run_epoch(train_loader=train_loader)
 
-        valid_loader = data_loaders.make_dataloader(data_file=data_variables["valid_file"],
-                                                    vocab=data_variables["vocab"], hps=hps,
-                                                    filter_word=data_variables["filter_word"],
-                                                    w2s_path=data_variables["val_w2s_path"],
-                                                    graphs_dir=os.path.join(data_variables["graphs_dir"], "val"))
+            valid_loader = data_loaders.make_dataloader(data_file=data_variables["valid_file"],
+                                                        vocab=data_variables["vocab"], hps=hps,
+                                                        filter_word=data_variables["filter_word"],
+                                                        w2s_path=data_variables["val_w2s_path"],
+                                                        graphs_dir=os.path.join(data_variables["graphs_dir"], "val"))
 
-        best_loss, best_F, non_descent_cnt, saveNo = run_eval(model, valid_loader, valid_loader.dataset, hps,
-                                                              trainer.best_loss,
-                                                              trainer.best_F, trainer.non_descent_cnt, trainer.saveNo)
+            best_loss, best_F, non_descent_cnt, saveNo = run_eval(model, valid_loader, valid_loader.dataset, hps,
+                                                                  trainer.best_loss,
+                                                                  trainer.best_F, trainer.non_descent_cnt, trainer.saveNo)
 
-        del valid_loader
+            del valid_loader
 
-        if non_descent_cnt >= 3:
-            logger.error("[Error] val loss does not descent for three times. Stopping supervisor...")
-            save_model(model, os.path.join(data_variables["train_dir"], "earlystop"))
-            return
+            if non_descent_cnt >= 3:
+                logger.error("[Error] val loss does not descent for three times. Stopping supervisor...")
+                save_model(model, os.path.join(data_variables["train_dir"], "earlystop"))
+                return
+
+        except Exception as e:
+            print(f"EXCEPT => {e}")
+            save_model(model, os.path.join(data_variables["train_dir"], f"except_{epoch}"))
+
+
