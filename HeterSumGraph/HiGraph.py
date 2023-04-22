@@ -10,6 +10,7 @@ import dgl
 from module.Encoder import sentEncoder
 from module.GAT import WSWGAT
 from module.PositionEmbedding import get_sinusoid_encoding_table
+from dgl.data.utils import save_graphs
 
 
 class HSumGraph(nn.Module):
@@ -89,8 +90,11 @@ class HSumGraph(nn.Module):
             sent_state = self.word2sent(graph, word_state, sent_state)
 
         result = self.wh(sent_state)
-
-        return result
+        # torch.save(sent_state, "temp/sent_state")
+        # torch.save(result, "temp/result")
+        # save_graphs("temp/graphs.bin", [graph])
+        # print("saved")
+        return result, sent_state
 
     def _init_sn_param(self):
         self.sent_pos_embed = nn.Embedding.from_pretrained(
@@ -232,3 +236,27 @@ class HSumDocGraph(HSumGraph):
                 snid2dnid[int(s)] = dnode
         node_feature = torch.stack(node_feature_list)
         return node_feature, snid2dnid
+
+
+class SentenceLevelModel(nn.Module):
+    def __init__(self, input_size):
+        super().__init__()
+        self.rnn = torch.nn.LSTM(input_size, 20, 1, bias=True)
+        self.classifier = torch.nn.Linear(20, 2)
+
+    def forward(self, x, probabilities):
+        x = self.rnn(x)[0]
+        out = self.classifier(x)
+        return out + probabilities / 2
+
+
+class Model(nn.Module):
+    def __init__(self,hps,embed):
+        super(Model, self).__init__()
+        self.HSG = HSumGraph(embed=embed,hps=hps)
+        self.sentence_level_model = SentenceLevelModel(input_size=hps.hidden_size).to(hps.device)
+
+    def forward(self, graph):
+        with torch.no_grad():
+            probabilities, sent_features = self.HSG(graph)
+        return self.sentence_level_model(sent_features, probabilities)

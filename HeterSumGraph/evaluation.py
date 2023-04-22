@@ -7,7 +7,7 @@ import json
 import torch
 from rouge import Rouge
 
-from HiGraph import HSumGraph
+from HiGraph import HSumGraph, Model
 from Tester import SLTester
 from module.dataloader import SummarizationDataSet, graph_collate_fn
 from module.embedding import Word_Embedding
@@ -153,7 +153,8 @@ def main():
 
     test_w2s_path = os.path.join(args.cache_dir, "test.w2s.tfidf.jsonl")
     if hps.model == "HSG":
-        model = HSumGraph(hps, embed)
+        # model = HSumGraph(hps, embed)
+        model = Model(hps, embed)
         logger.info("[MODEL] HeterSumGraph ")
         loader = data_loaders.make_dataloader(
             data_file=DATA_FILE,vocab=vocab,hps=hps,filter_word=FILTER_WORD,w2s_path=test_w2s_path,

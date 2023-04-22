@@ -15,8 +15,9 @@ def setup_training(model, hps, data_variables):
     train_dir = os.path.join(hps.save_root, "train")
     if os.path.exists(train_dir) and hps.restore_model != 'None':
         logger.info("[INFO] Restoring %s for training...", hps.restore_model)
-        best_model_file = os.path.join(train_dir, hps.restore_model)
-        model.load_state_dict(torch.load(best_model_file))
+        # best_model_file = os.path.join(train_dir, hps.restore_model)
+        # model.load_state_dict(torch.load(best_model_file))
+        model.HSG.load_state_dict(torch.load(hps.restore_model))
         hps.save_root = hps.save_root + "_reload"
     else:
         logger.info("[INFO] Create new model for training...")
@@ -35,7 +36,8 @@ class Trainer:
     def __init__(self, model, hps, train_dir):
         self.model = model
         self.hps = hps
-        self.optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=hps.lr)
+        self.optimizer = torch.optim.Adam(
+            filter(lambda p: p.requires_grad, self.model.sentence_level_model.parameters()), lr=hps.lr)
         self.criterion = torch.nn.CrossEntropyLoss(reduction='none')
         self.best_train_loss = None
         self.best_loss = None
@@ -156,7 +158,8 @@ def run_training(model, hps, data_variables):
 
             best_loss, best_F, non_descent_cnt, saveNo = run_eval(model, valid_loader, valid_loader.dataset, hps,
                                                                   trainer.best_loss,
-                                                                  trainer.best_F, trainer.non_descent_cnt, trainer.saveNo)
+                                                                  trainer.best_F, trainer.non_descent_cnt,
+                                                                  trainer.saveNo)
 
             del valid_loader
 
@@ -167,6 +170,5 @@ def run_training(model, hps, data_variables):
 
         except Exception as e:
             print(f"EXCEPT => {e}")
-            save_model(model, os.path.join(data_variables["train_dir"], f"except_{epoch}"))
-
-
+            raise e
+            # save_model(model, os.path.join(data_variables["train_dir"], f"except_{epoch}"))

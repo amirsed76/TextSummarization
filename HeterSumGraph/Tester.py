@@ -2,8 +2,10 @@ import torch
 import dgl
 
 import os
+
 from tools.utils import eval_label
 from tools.logger import *
+
 
 class TestPipLine():
     def __init__(self, model, m, test_dir, limited):
@@ -76,7 +78,7 @@ class TestPipLine():
     def extractLabel(self):
         return self.extracts
 
-    
+
 class SLTester(TestPipLine):
     def __init__(self, model, m, test_dir=None, limited=False, blocking_win=3):
         super().__init__(model, m, test_dir, limited)
@@ -96,9 +98,9 @@ class SLTester(TestPipLine):
         outputs = self.model.forward(G)
         # logger.debug(outputs)
         snode_id = G.filter_nodes(lambda nodes: nodes.data["dtype"] == 1)
-        label = G.ndata["label"][snode_id].sum(-1)            # [n_nodes]
-        G.nodes[snode_id].data["loss"] = self.criterion(outputs, label).unsqueeze(-1)    # [n_nodes, 1]
-        loss = dgl.sum_nodes(G, "loss")    # [batch_size, 1]
+        label = G.ndata["label"][snode_id].sum(-1)  # [n_nodes]
+        G.nodes[snode_id].data["loss"] = self.criterion(outputs, label).unsqueeze(-1)  # [n_nodes, 1]
+        loss = dgl.sum_nodes(G, "loss")  # [batch_size, 1]
         loss = loss.mean()
         self.running_loss += float(loss.data)
 
@@ -115,17 +117,18 @@ class SLTester(TestPipLine):
             snode_id = g.filter_nodes(lambda nodes: nodes.data["dtype"] == 1)
             N = len(snode_id)
             p_sent = g.ndata["p"][snode_id]
-            p_sent = p_sent.view(-1, 2)   # [node, 2]
-            label = g.ndata["label"][snode_id].sum(-1).squeeze().cpu()    # [n_node]
+            p_sent = p_sent.view(-1, 2)  # [node, 2]
+            label = g.ndata["label"][snode_id].sum(-1).squeeze().cpu()  # [n_node]
             if self.m == 0:
-                prediction = p_sent.max(1)[1] # [node]
-                pred_idx = torch.arange(N)[prediction!=0].long()
+                prediction = p_sent.max(1)[1]  # [node]
+                pred_idx = torch.arange(N)[prediction != 0].long()
             else:
                 if blocking:
-                    pred_idx = self.ngram_blocking(original_article_sents, p_sent[:,1], self.blocking_win, min(self.m, N))
+                    pred_idx = self.ngram_blocking(original_article_sents, p_sent[:, 1], self.blocking_win,
+                                                   min(self.m, N))
                 else:
                     # print(p_sent.size())
-                    topk, pred_idx = torch.topk(p_sent[:,1], min(self.m, N))
+                    topk, pred_idx = torch.topk(p_sent[:, 1], min(self.m, N))
                 prediction = torch.zeros(N).long()
                 prediction[pred_idx] = 1
             self.extracts.append(pred_idx.tolist())
@@ -151,13 +154,12 @@ class SLTester(TestPipLine):
             "[INFO] The size of totalset is %d, sent_number is %d, accu is %f, precision is %f, recall is %f, F is %f",
             self.example_num, self.total_sentence_num, self._accu, self._precision, self._recall, self._F)
 
-
     def ngram_blocking(self, sents, p_sent, n_win, k):
         """
         
         :param p_sent: [sent_num, 1]
         :param n_win: int, n_win=2,3,4...
-        :return: 
+        :return:
         """
         ngram_list = []
         _, sorted_idx = p_sent.sort(descending=True)
@@ -168,7 +170,7 @@ class SLTester(TestPipLine):
             overlap_flag = 0
             sent_ngram = []
             for i in range(len(pieces) - n_win):
-                ngram = " ".join(pieces[i : (i + n_win)])
+                ngram = " ".join(pieces[i: (i + n_win)])
                 if ngram in ngram_list:
                     overlap_flag = 1
                     break
@@ -183,8 +185,6 @@ class SLTester(TestPipLine):
         # print(sorted_idx, S)
         return S
 
-
     @property
     def labelMetric(self):
         return self._F
-

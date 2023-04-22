@@ -73,7 +73,7 @@ def run_eval(model, loader, valset, hps, best_loss, best_F, non_descent_cnt, sav
         non_descent_cnt += 1
 
     if best_F is None or best_F < F:
-        bestmodel_save_path = os.path.join(eval_dir, 'bestFmodel')  # this is where checkpoints of best models are saved
+        bestmodel_save_path = os.path.join(eval_dir, 'HSGmodel')  # this is where checkpoints of best models are saved
         if best_F is not None:
             logger.info('[INFO] Found new best model with %.6f F. The original F is %.6f, Saving to %s', float(F),
                         float(best_F), bestmodel_save_path)

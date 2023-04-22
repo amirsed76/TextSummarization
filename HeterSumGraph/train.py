@@ -4,7 +4,7 @@ import random
 import numpy as np
 import torch
 from config import pars_args
-from HiGraph import HSumGraph
+from HiGraph import HSumGraph, Model
 from data_manager import data_loaders
 from module.embedding import Word_Embedding
 from module.vocabulary import Vocab
@@ -87,7 +87,8 @@ def main():
                 print(f">>>>from:", hps.from_instances_index)
         else:
 
-            model = HSumGraph(hps, embed)
+            # model = HSumGraph(hps, embed)
+            model = Model(hps, embed)
             logger.info("[MODEL] HeterSumGraph ")
             setup_training(model=model, hps=hps, data_variables=data_variables)
 

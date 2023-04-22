@@ -20,15 +20,15 @@ def pars_args():
 
     # Important settings
     parser.add_argument('--model', type=str, default='HSG', help='model structure[HSG|HDSG]')
-    parser.add_argument('--test_model', type=str, default='eval\\bestFmodel',
+    parser.add_argument('--test_model', type=str, default='_reload\\eval\\bestFmodel',
                         help='choose different model to test [multi/evalbestmodel/trainbestmodel/earlystop]')
 
     parser.add_argument('--use_pyrouge', action='store_true', default=False, help='use_pyrouge')
 
-
-
-    parser.add_argument('--restore_model', type=str, default='None',
-                        help='Restore model for further training. [bestmodel/bestFmodel/earlystop/None]')
+    parser.add_argument('--restore_model', type=str, default=f"{root}\\HeterSumGraph\\save\\eval\\HSGmodel",
+                        help='Restore model for further training. [bestmodel/HSGmodel/earlystop/None]')
+    # arser.add_argument('--restore_model', type=str, default='None',
+    #                         help='Restore model for further training. [bestmodel/HSGmodel/earlystop/None]')
 
     # Where to save output
     parser.add_argument('--save_root', type=str, default='save/', help='Root directory for all model.')
@@ -39,7 +39,7 @@ def pars_args():
     parser.add_argument('--gpu', type=str, default='0', help='GPU ID to use. [default: 0]')
     parser.add_argument('--cuda', action='store_true', default=True, help='GPU or CPU [default: False]')
     parser.add_argument('--vocab_size', type=int, default=50000, help='Size of vocabulary. [default: 50000]')
-    parser.add_argument('--n_epochs', type=int, default=20, help='Number of epochs [default: 20]')
+    parser.add_argument('--n_epochs', type=int, default=1, help='Number of epochs [default: 20]')
     parser.add_argument('--batch_size', type=int, default=64, help='Mini batch size [default: 32]')
     parser.add_argument('--n_iter', type=int, default=1, help='iteration hop [default: 1]')
 
@@ -57,7 +57,6 @@ def pars_args():
     parser.add_argument('--n_feature_size', type=int, default=128, help='size of node feature [default: 128]')
     parser.add_argument('--hidden_size', type=int, default=64, help='hidden size [default: 64]')
     parser.add_argument('--gcn_hidden_size', type=int, default=128, help='hidden size [default: 64]')
-
 
     parser.add_argument('--ffn_inner_hidden_size', type=int, default=512,
                         help='PositionwiseFeedForward inner hidden size [default: 512]')
@@ -87,15 +86,12 @@ def pars_args():
     parser.add_argument('--limited', action='store_true', default=False, help='limited hypo length')
     parser.add_argument('--blocking', action='store_true', default=False, help='ngram blocking')
 
+    parser.add_argument('--max_instances', type=int, default=None, help='max length of instances')
+    parser.add_argument('--from_instances_index', type=int, default=0, help='from_instances_index')
 
-    parser.add_argument('--max_instances', type=int, default=None,help='max length of instances')
-    parser.add_argument('--from_instances_index', type=int, default=0,help='from_instances_index')
-
-    parser.add_argument('--use_cache_graph', type=bool, default=True,help='use cache')
-    parser.add_argument('--fill_graph_cache', type=bool, default=False,help='use cache')
+    parser.add_argument('--use_cache_graph', type=bool, default=True, help='use cache')
+    parser.add_argument('--fill_graph_cache', type=bool, default=False, help='use cache')
 
     args = parser.parse_args()
 
     return args
-
-
