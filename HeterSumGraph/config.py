@@ -20,7 +20,7 @@ def pars_args():
 
     # Important settings
     parser.add_argument('--model', type=str, default='HSG', help='model structure[HSG|HDSG]')
-    parser.add_argument('--test_model', type=str, default='_reload\\eval\\bestFmodel',
+    parser.add_argument('--test_model', type=str, default='_reload\\eval\\bestmodel_0',
                         help='choose different model to test [multi/evalbestmodel/trainbestmodel/earlystop]')
 
     parser.add_argument('--use_pyrouge', action='store_true', default=False, help='use_pyrouge')
@@ -39,8 +39,8 @@ def pars_args():
     parser.add_argument('--gpu', type=str, default='0', help='GPU ID to use. [default: 0]')
     parser.add_argument('--cuda', action='store_true', default=True, help='GPU or CPU [default: False]')
     parser.add_argument('--vocab_size', type=int, default=50000, help='Size of vocabulary. [default: 50000]')
-    parser.add_argument('--n_epochs', type=int, default=1, help='Number of epochs [default: 20]')
-    parser.add_argument('--batch_size', type=int, default=64, help='Mini batch size [default: 32]')
+    parser.add_argument('--n_epochs', type=int, default=3, help='Number of epochs [default: 20]')
+    parser.add_argument('--batch_size', type=int, default=128, help='Mini batch size [default: 32]')
     parser.add_argument('--n_iter', type=int, default=1, help='iteration hop [default: 1]')
 
     parser.add_argument('--word_embedding', action='store_true', default=False,
@@ -80,7 +80,7 @@ def pars_args():
     parser.add_argument('--max_grad_norm', type=float, default=1.0,
                         help='for gradient clipping max gradient normalization')
 
-    parser.add_argument('-m', type=int, default=3, help='decode summary length')
+    parser.add_argument('-m', type=int, default=4, help='decode summary length')
     parser.add_argument('--save_label', action='store_true', default=True, help='require multihead attention')
 
     parser.add_argument('--limited', action='store_true', default=False, help='limited hypo length')
