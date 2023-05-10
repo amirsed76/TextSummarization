@@ -20,15 +20,15 @@ def pars_args():
 
     # Important settings
     parser.add_argument('--model', type=str, default='HSG', help='model structure[HSG|HDSG]')
-    parser.add_argument('--test_model', type=str, default='_reload\\eval\\bestmodel_0',
+    parser.add_argument('--test_model', type=str, default='eval\\bestmodel_0',
                         help='choose different model to test [multi/evalbestmodel/trainbestmodel/earlystop]')
 
     parser.add_argument('--use_pyrouge', action='store_true', default=False, help='use_pyrouge')
 
-    parser.add_argument('--restore_model', type=str, default=f"{root}\\HeterSumGraph\\save\\eval\\HSGmodel",
-                        help='Restore model for further training. [bestmodel/HSGmodel/earlystop/None]')
-    # arser.add_argument('--restore_model', type=str, default='None',
-    #                         help='Restore model for further training. [bestmodel/HSGmodel/earlystop/None]')
+    # parser.add_argument('--restore_model', type=str, default=f"{root}\\HeterSumGraph\\models\\test\\cnndm.ckpt",
+    #                     help='Restore model for further training. [bestmodel/HSGmodel/earlystop/None]')
+    parser.add_argument('--restore_model', type=str, default='None',
+                            help='Restore model for further training. [bestmodel/HSGmodel/earlystop/None]')
 
     # Where to save output
     parser.add_argument('--save_root', type=str, default='save/', help='Root directory for all model.')
@@ -39,7 +39,7 @@ def pars_args():
     parser.add_argument('--gpu', type=str, default='0', help='GPU ID to use. [default: 0]')
     parser.add_argument('--cuda', action='store_true', default=True, help='GPU or CPU [default: False]')
     parser.add_argument('--vocab_size', type=int, default=50000, help='Size of vocabulary. [default: 50000]')
-    parser.add_argument('--n_epochs', type=int, default=3, help='Number of epochs [default: 20]')
+    parser.add_argument('--n_epochs', type=int, default=5, help='Number of epochs [default: 20]')
     parser.add_argument('--batch_size', type=int, default=128, help='Mini batch size [default: 32]')
     parser.add_argument('--n_iter', type=int, default=1, help='iteration hop [default: 1]')
 
@@ -74,13 +74,14 @@ def pars_args():
                         help='max length of documents (max timesteps of documents)')
 
     # Training
-    parser.add_argument('--lr', type=float, default=0.0005, help='learning rate')
+    parser.add_argument('--lr', type=float, default=0.00005, help='learning rate')
+    # parser.add_argument('--lr', type=float, default=0.0005, help='learning rate')
     parser.add_argument('--lr_descent', action='store_true', default=False, help='learning rate descent')
     parser.add_argument('--grad_clip', action='store_true', default=False, help='for gradient clipping')
     parser.add_argument('--max_grad_norm', type=float, default=1.0,
                         help='for gradient clipping max gradient normalization')
 
-    parser.add_argument('-m', type=int, default=4, help='decode summary length')
+    parser.add_argument('-m', type=int, default=3, help='decode summary length')
     parser.add_argument('--save_label', action='store_true', default=True, help='require multihead attention')
 
     parser.add_argument('--limited', action='store_true', default=False, help='limited hypo length')

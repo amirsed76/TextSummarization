@@ -11,6 +11,7 @@ from module.Encoder import sentEncoder
 from module.GAT import WSWGAT
 from module.PositionEmbedding import get_sinusoid_encoding_table
 from dgl.data.utils import save_graphs
+from dgl.nn.pytorch import GATConv
 
 
 class HSumGraph(nn.Module):
@@ -59,7 +60,7 @@ class HSumGraph(nn.Module):
 
         # node classification
         self.n_feature = hps.hidden_size
-        self.wh = nn.Linear(self.n_feature, 2)
+        # self.wh = nn.Linear(self.n_feature, 2)
 
         self.to(hps.device)
 
@@ -89,12 +90,11 @@ class HSumGraph(nn.Module):
             # word -> sent
             sent_state = self.word2sent(graph, word_state, sent_state)
 
-        result = self.wh(sent_state)
-        # torch.save(sent_state, "temp/sent_state")
-        # torch.save(result, "temp/result")
-        # save_graphs("temp/graphs.bin", [graph])
-        # print("saved")
-        return result, sent_state
+        # result = self.wh(sent_state)
+
+        return sent_state
+        # return result, sent_state
+        # return None, sent_state
 
     def _init_sn_param(self):
         self.sent_pos_embed = nn.Embedding.from_pretrained(
@@ -159,104 +159,80 @@ class HSumGraph(nn.Module):
         return feature, glen
 
 
-class HSumDocGraph(HSumGraph):
-    """
-        without sent2sent and add residual connection
-        add Document Nodes
-    """
-
-    def __init__(self, hps, embed):
-        super().__init__(hps, embed)
-        self.dn_feature_proj = nn.Linear(hps.hidden_size, hps.hidden_size, bias=False)
-        self.wh = nn.Linear(self.n_feature * 2, 2)
-
-    def forward(self, graph):
-        """
-        :param graph: [batch_size] * DGLGraph
-            node:
-                word: unit=0, dtype=0, id=(int)wordid in vocab
-                sentence: unit=1, dtype=1, words=tensor, position=int, label=tensor
-                document: unit=1, dtype=2
-            edge:
-                word2sent, sent2word: tffrac=int, type=0
-                word2doc, doc2word: tffrac=int, type=0
-                sent2doc: type=2
-        :return: result: [sentnum, 2]
-        """
-        snode_id = graph.filter_nodes(lambda nodes: nodes.data["dtype"] == 1)
-        dnode_id = graph.filter_nodes(lambda nodes: nodes.data["dtype"] == 2)
-        supernode_id = graph.filter_nodes(lambda nodes: nodes.data["unit"] == 1)
-
-        # word node init
-        word_feature = self.set_wnfeature(graph)  # [wnode, embed_size]
-        sent_feature = self.n_feature_proj(self.set_snfeature(graph))  # [snode, n_feature_size]
-
-        # sent and doc node init
-        graph.nodes[snode_id].data["init_feature"] = sent_feature
-        doc_feature, snid2dnid = self.set_dnfeature(graph)
-        doc_feature = self.dn_feature_proj(doc_feature)
-        graph.nodes[dnode_id].data["init_feature"] = doc_feature
-
-        # the start state
-        word_state = word_feature
-        sent_state = graph.nodes[supernode_id].data["init_feature"]
-        sent_state = self.word2sent(graph, word_state, sent_state)
-
-        for i in range(self._n_iter):
-            # sent -> word
-            word_state = self.sent2word(graph, word_state, sent_state)
-            # word -> sent
-            sent_state = self.word2sent(graph, word_state, sent_state)
-
-        graph.nodes[supernode_id].data["hidden_state"] = sent_state
-
-        # extract sentence nodes
-        s_state_list = []
-        for snid in snode_id:
-            d_state = graph.nodes[snid2dnid[int(snid)]].data["hidden_state"]
-            s_state = graph.nodes[snid].data["hidden_state"]
-            s_state = torch.cat([s_state, d_state], dim=-1)
-            s_state_list.append(s_state)
-
-        s_state = torch.cat(s_state_list, dim=0)
-        result = self.wh(s_state)
-        return result
-
-    def set_dnfeature(self, graph):
-        """ init doc node by mean pooling on the its sent node (connected by the edges with type=1) """
-        dnode_id = graph.filter_nodes(lambda nodes: nodes.data["dtype"] == 2)
-        node_feature_list = []
-        snid2dnid = {}
-        for dnode in dnode_id:
-            snodes = [nid for nid in graph.predecessors(dnode) if graph.nodes[nid].data["dtype"] == 1]
-            doc_feature = graph.nodes[snodes].data["init_feature"].mean(dim=0)
-            assert not torch.any(torch.isnan(doc_feature)), "doc_feature_element"
-            node_feature_list.append(doc_feature)
-            for s in snodes:
-                snid2dnid[int(s)] = dnode
-        node_feature = torch.stack(node_feature_list)
-        return node_feature, snid2dnid
-
-
 class SentenceLevelModel(nn.Module):
     def __init__(self, input_size):
         super().__init__()
-        self.rnn = torch.nn.LSTM(input_size, 20, 1, bias=True)
-        self.classifier = torch.nn.Linear(20, 2)
+        self.rnn = torch.nn.LSTM(input_size, 128, 1, bias=True)
+        self.classifier = torch.nn.Sequential(
+            torch.nn.Linear(128, 64),
+            torch.nn.LeakyReLU(),
+            torch.nn.Linear(64, 2)
+        )
 
     def forward(self, x, probabilities):
         x = self.rnn(x)[0]
         out = self.classifier(x)
         return out + probabilities / 2
+        # return out
 
 
-class Model(nn.Module):
-    def __init__(self,hps,embed):
-        super(Model, self).__init__()
-        self.HSG = HSumGraph(embed=embed,hps=hps)
+class RnnHSGModel(nn.Module):
+    def __init__(self, hps, embed):
+        super(RnnHSGModel, self).__init__()
+        self.hps = hps
+        self.HSG = HSumGraph(embed=embed, hps=hps)
         self.sentence_level_model = SentenceLevelModel(input_size=hps.hidden_size).to(hps.device)
 
     def forward(self, graph):
         with torch.no_grad():
             probabilities, sent_features = self.HSG(graph)
-        return self.sentence_level_model(sent_features, probabilities)
+        # probabilities, sent_features = self.HSG(graph)
+        graph_list = dgl.unbatch(graph)
+        indices = [len(g.filter_nodes(lambda nodes: nodes.data["dtype"] == 1)) for g in graph_list]
+        result = torch.Tensor().to(self.hps.device)
+        for p, sentence_vector in zip(torch.split(probabilities, indices), torch.split(sent_features, indices)):
+            result = torch.cat([result, self.sentence_level_model(sentence_vector, p)])
+        return result
+        # return self.sentence_level_model(sent_features, probabilities)
+
+
+class HSumGraphWithS2SModel(nn.Module):
+
+    def __init__(self, hps, embed):
+        super(HSumGraphWithS2SModel, self).__init__()
+        self.hps = hps
+        self.HSG = HSumGraph(embed=embed, hps=hps)
+        self.num_heads = 4
+        self.s2s_gat_conv = GATConv(in_feats=hps.hidden_size, out_feats=hps.hidden_size, num_heads=self.num_heads)
+        self.classifier = torch.nn.Sequential(
+            torch.nn.Linear(hps.hidden_size * self.num_heads, 128),
+            torch.nn.LeakyReLU(),
+            torch.nn.Linear(128, 2)
+        )
+        self.to(hps.device)
+
+    def make_sentence_graph(self, graph):
+        u, v = torch.Tensor([]), torch.Tensor([])
+        last_index = 0
+
+        graphs = dgl.unbatch(graph)
+        for g in graphs:
+            sentences = g.filter_nodes(lambda nodes: nodes.data["dtype"] == 1)
+            new_u = torch.Tensor(list(range(len(sentences) - 1))) + last_index
+            new_v = torch.Tensor(list(range(1, len(sentences)))) + last_index
+            u = torch.cat([u, new_u, new_v])
+            v = torch.cat([v, new_v, new_u])
+            last_index += len(sentences)
+
+        return dgl.graph((list(u), list(v)))
+
+    def forward(self, graph):
+        sent_features = self.HSG(graph)
+        sentence_graph = self.make_sentence_graph(graph).to(self.hps.device)
+        sent_features = self.s2s_gat_conv(sentence_graph, sent_features)
+        sent_features = sent_features.reshape(-1, self.num_heads * self.hps.hidden_size)
+        result = self.classifier(sent_features)
+        return result
+
+
+Model = HSumGraphWithS2SModel

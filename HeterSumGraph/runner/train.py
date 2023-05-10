@@ -18,7 +18,8 @@ def setup_training(model, hps, data_variables):
         # best_model_file = os.path.join(train_dir, hps.restore_model)
         # model.load_state_dict(torch.load(best_model_file))
         model.HSG.load_state_dict(torch.load(hps.restore_model))
-        hps.save_root = hps.save_root + "_reload"
+        # model.load_state_dict(torch.load(hps.restore_model))
+        # hps.save_root = hps.save_root + "_reload"
     else:
         logger.info("[INFO] Create new model for training...")
         if os.path.exists(train_dir):
@@ -36,8 +37,10 @@ class Trainer:
     def __init__(self, model, hps, train_dir):
         self.model = model
         self.hps = hps
-        self.optimizer = torch.optim.Adam(
-            filter(lambda p: p.requires_grad, self.model.sentence_level_model.parameters()), lr=hps.lr)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=hps.lr)
+        #
+        # self.optimizer = torch.optim.Adam(
+        #     filter(lambda p: p.requires_grad, self.model.parameters()), lr=hps.lr)
         self.criterion = torch.nn.CrossEntropyLoss(reduction='none')
         self.best_train_loss = None
         self.best_loss = None
