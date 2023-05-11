@@ -2,14 +2,12 @@ import argparse
 import datetime
 import os
 import time
-import json
 
 import torch
 from rouge import Rouge
 
-from HiGraph import HSumGraph, Model
+from HiGraph import Model
 from Tester import SLTester
-from module.dataloader import SummarizationDataSet, graph_collate_fn
 from module.embedding import Word_Embedding
 from module.vocabulary import Vocab
 from tools import utils
@@ -21,7 +19,7 @@ from data_manager import data_loaders
 
 def load_test_model(model, model_name, eval_dir, save_root):
     """ choose which model will be loaded for evaluation """
-    path = os.path.join(save_root,model_name)
+    path = os.path.join(save_root, model_name)
     model.load_state_dict(torch.load(path))
     return model
 
@@ -157,8 +155,8 @@ def main():
         model = Model(hps, embed)
         logger.info("[MODEL] HeterSumGraph ")
         loader = data_loaders.make_dataloader(
-            data_file=DATA_FILE,vocab=vocab,hps=hps,filter_word=FILTER_WORD,w2s_path=test_w2s_path,
-            graphs_dir=os.path.join(args.cache_dir,"graphs\\test")
+            data_file=DATA_FILE, vocab=vocab, hps=hps, filter_word=FILTER_WORD, w2s_path=test_w2s_path,
+            graphs_dir=os.path.join(args.cache_dir, "graphs\\test")
         )
         if hps.fill_graph_cache:
             return

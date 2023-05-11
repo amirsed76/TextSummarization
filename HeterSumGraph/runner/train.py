@@ -81,8 +81,8 @@ class Trainer:
         # self.save_epoch_model()
 
         self.epoch_avg_loss = epoch_loss / len(train_loader)
-        logger.info('   | end of epoch {:3d} | time: {:5.2f}s | epoch train loss {:5.4f} | '
-                    .format(self.epoch, (time.time() - epoch_start_time), float(self.epoch_avg_loss)))
+        logger.info(' | end of epoch {:3d} | time: {:5.2f}s | epoch train loss {:5.4f} | '.format(self.epoch, (
+                    time.time() - epoch_start_time), float(self.epoch_avg_loss)))
         return epoch_loss
 
     def train_batch(self, G):
@@ -137,11 +137,10 @@ class Trainer:
 
 def run_training(model, hps, data_variables):
     trainer = Trainer(model=model, hps=hps, train_dir=os.path.join(hps.save_root, "train"))
-    train_loader = data_loaders.make_dataloader(data_file=data_variables["train_file"],
-                                                vocab=data_variables["vocab"], hps=hps,
-                                                filter_word=data_variables["filter_word"],
-                                                w2s_path=data_variables["train_w2s_path"],
-                                                graphs_dir=os.path.join(data_variables["graphs_dir"], "train"))
+    train_size = 287000
+    n_part = 8
+
+    print(f"data_loader")
 
     for epoch in range(1, hps.n_epochs + 1):
         logger.info(f"train started in epoch={epoch}")
@@ -150,28 +149,46 @@ def run_training(model, hps, data_variables):
 
         trainer.epoch = epoch
         model.train()
-        try:
-            trainer.run_epoch(train_loader=train_loader)
 
-            valid_loader = data_loaders.make_dataloader(data_file=data_variables["valid_file"],
+        for train_data_part in range(n_part+1):
+            if train_data_part == n_part:
+                from_index = train_data_part * train_size // n_part
+                to_index = None
+            else:
+                from_index = train_data_part * train_size // n_part
+                to_index = (train_data_part + 1) * train_size // n_part
+            train_loader = data_loaders.make_dataloader(data_file=data_variables["train_file"],
                                                         vocab=data_variables["vocab"], hps=hps,
                                                         filter_word=data_variables["filter_word"],
-                                                        w2s_path=data_variables["val_w2s_path"],
-                                                        graphs_dir=os.path.join(data_variables["graphs_dir"], "val"))
+                                                        w2s_path=data_variables["train_w2s_path"],
+                                                        graphs_dir=os.path.join(data_variables["graphs_dir"],
+                                                                                "train"),
+                                                        from_index=from_index,
+                                                        to_index=to_index,
+                                                        shuffle=Trainer
+                                                        )
 
-            best_loss, best_F, non_descent_cnt, saveNo = run_eval(model, valid_loader, valid_loader.dataset, hps,
-                                                                  trainer.best_loss,
-                                                                  trainer.best_F, trainer.non_descent_cnt,
-                                                                  trainer.saveNo)
+            print(f"train loader from {from_index} to {to_index} started epoch started ")
 
-            del valid_loader
+            trainer.run_epoch(train_loader=train_loader)
+            print(f"train loader from {from_index} to {to_index} started epoch finished ")
+            del train_loader
 
-            if non_descent_cnt >= 3:
-                logger.error("[Error] val loss does not descent for three times. Stopping supervisor...")
-                save_model(model, os.path.join(data_variables["train_dir"], "earlystop"))
-                return
+        valid_loader = data_loaders.make_dataloader(data_file=data_variables["valid_file"],
+                                                    vocab=data_variables["vocab"], hps=hps,
+                                                    filter_word=data_variables["filter_word"],
+                                                    w2s_path=data_variables["val_w2s_path"],
+                                                    graphs_dir=os.path.join(data_variables["graphs_dir"],
+                                                                            "val"))
 
-        except Exception as e:
-            print(f"EXCEPT => {e}")
-            raise e
-            # save_model(model, os.path.join(data_variables["train_dir"], f"except_{epoch}"))
+        best_loss, best_F, non_descent_cnt, saveNo = run_eval(model, valid_loader, valid_loader.dataset, hps,
+                                                              trainer.best_loss,
+                                                              trainer.best_F, trainer.non_descent_cnt,
+                                                              trainer.saveNo)
+
+        del valid_loader
+
+        if non_descent_cnt >= 3:
+            logger.error("[Error] val loss does not descent for three times. Stopping supervisor...")
+            save_model(model, os.path.join(data_variables["train_dir"], "earlystop"))
+            return

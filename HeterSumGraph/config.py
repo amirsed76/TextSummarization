@@ -7,15 +7,11 @@ def pars_args():
     parser = argparse.ArgumentParser(description='HeterSumGraph Model')
     root = "C:\\Users\\amirreza\Desktop\\dars\\arshad\\tez\project\HSG"
     # Where to find data
-    parser.add_argument('--data_dir', type=str,
-                        default=f'{root}\datasets\cnndm',
-                        help='The dataset directory.')
-    parser.add_argument('--cache_dir', type=str,
-                        default=f'{root}\\HeterSumGraph\\cache\\CNNDM',
+    parser.add_argument('--data_dir', type=str, default=f'{root}\datasets\cnndm', help='The dataset directory.')
+    parser.add_argument('--cache_dir', type=str, default=f'{root}\\HeterSumGraph\\cache\\CNNDM',
                         help='The processed dataset directory')
 
-    parser.add_argument('--embedding_path', type=str,
-                        default=f'{root}\embeddings\glove.42B.300d.txt',
+    parser.add_argument('--embedding_path', type=str, default=f'{root}\embeddings\glove.42B.300d.txt',
                         help='Path expression to external word embedding.')
 
     # Important settings
@@ -25,14 +21,14 @@ def pars_args():
 
     parser.add_argument('--use_pyrouge', action='store_true', default=False, help='use_pyrouge')
 
-    # parser.add_argument('--restore_model', type=str, default=f"{root}\\HeterSumGraph\\models\\test\\cnndm.ckpt",
+    # parser.add_argument('--restore_model', type=str, default=f"{root}\\HeterSumGraph\\results\\models\\test\\cnndm.ckpt",
     #                     help='Restore model for further training. [bestmodel/HSGmodel/earlystop/None]')
     parser.add_argument('--restore_model', type=str, default='None',
-                            help='Restore model for further training. [bestmodel/HSGmodel/earlystop/None]')
+                        help='Restore model for further training. [bestmodel/HSGmodel/earlystop/None]')
 
     # Where to save output
-    parser.add_argument('--save_root', type=str, default='save/', help='Root directory for all model.')
-    parser.add_argument('--log_root', type=str, default='log/', help='Root directory for all logging.')
+    parser.add_argument('--save_root', type=str, default=f'results/save/', help='Root directory for all model.')
+    parser.add_argument('--log_root', type=str, default='results/log/', help='Root directory for all logging.')
 
     # Hyperparameters
     parser.add_argument('--seed', type=int, default=666, help='set the random seed [default: 666]')

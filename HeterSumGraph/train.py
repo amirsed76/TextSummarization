@@ -4,7 +4,7 @@ import random
 import numpy as np
 import torch
 from config import pars_args
-from HiGraph import HSumGraph, Model
+from HiGraph import Model
 from data_manager import data_loaders
 from module.embedding import Word_Embedding
 from module.vocabulary import Vocab
